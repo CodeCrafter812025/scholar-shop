@@ -1,0 +1,20 @@
+{
+  "firstname": "Hossein",
+  "lastname": "Badrnezhad",
+  "gateway": "Zarinpal",
+  "username": "user1",
+  "password": "123",
+  "email": "hossein@gmail.com",
+  "mobile": "09121111111",
+  "tel": "02112345678",
+  "address": "Tehran",
+  "postalCode": "1234567890",
+  "items": [
+    {
+      "productId": 66,
+      "colorId": 24,
+      "sizeId": 132,
+      "quantity": 1
+    }
+  ]
+}
