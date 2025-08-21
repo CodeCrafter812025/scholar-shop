@@ -57,7 +57,7 @@
   };
 
 
-    const API_URL = 'http://localhost:8080/api/products';
+    const API_URL = '/api/product/search';
 
     const productsRow = document.getElementById('productsRow');
     const cartCountEl = document.getElementById('cartCount');
@@ -76,43 +76,60 @@
     function updateCartUI(){ cartCountEl.textContent = getCart().reduce((s,p)=>s+p.qty,0); }
     updateCartUI();
 
-    async function loadProducts(page=1, q='', sort=''){
-      productsRow.innerHTML = '<div class="text-center py-5">در حال بارگذاری...</div>';
-      try{
-        const res = await fetch(`${API_URL}?page=${page}&q=${encodeURIComponent(q)}&sort=${encodeURIComponent(sort)}`);
-        if(!res.ok) throw new Error('خطا در دریافت محصولات');
-        const data = await res.json(); // انتظار فرمت: { items: [...], page: n, totalPages: m }
-        renderProducts(data.items||[]);
-        renderPagination(data.page||1, data.totalPages||1);
-      }catch(err){
-        productsRow.innerHTML = '<div class="alert alert-danger">خطا در دریافت داده‌ها.</div>';
-        console.error(err);
-      }
+async function loadProducts(page=1, q='', sort=''){
+  productsRow.innerHTML = '<div class="text-center py-5">در حال بارگذاری...</div>';
+  try{
+    // front-end uses 1-based pages; API expects 0-based
+    const apiPage = Math.max(0, page - 1);
+    const url = `${API_URL}?page=${apiPage}&size=12&q=${encodeURIComponent(q)}&sort=${encodeURIComponent(sort)}`;
+    const res = await fetch(url, { credentials: 'include' });
+    if(!res.ok){
+      const text = await res.text().catch(()=>'');
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${text ? '- ' + text.slice(0,200) : ''}`);
     }
+    const json = await res.json().catch(()=>null);
+    // APIResponse wrapper -> data contains the Page object
+    const pageData = json?.data || json;
+    const items = pageData?.content || (Array.isArray(pageData) ? pageData : []);
+    renderProducts(items);
+    const currentOneBased = (pageData?.number != null) ? (pageData.number + 1) : page;
+    const totalPages = pageData?.totalPages || 1;
+    renderPagination(currentOneBased, totalPages);
+  }catch(err){
+    productsRow.innerHTML = `<div class="alert alert-danger">خطا در دریافت داده‌ها: ${err.message}</div>`;
+    console.error('loadProducts error:', err);
+  }
+}
+loadProducts(1);
+
 
     function renderProducts(items){
-      if(!items || items.length===0){
-        productsRow.innerHTML = '<div class="col-12">محصولی یافت نشد.</div>';
-        return;
-      }
-      productsRow.innerHTML = items.map(p => `
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card h-100">
-            <img src="${p.image || 'assets/placeholder.png'}" class="card-img-top" alt="${p.name}">
-            <div class="card-body d-flex flex-column">
-              <h6 class="card-title mb-1">${p.name}</h6>
-              <p class="mb-2 small text-muted">${p.shortDesc || ''}</p>
-              <div class="mt-auto d-flex justify-content-between align-items-center">
-                <strong>${p.price ? p.price + ' تومان' : '—'}</strong>
-                <button class="btn btn-sm btn-primary" onclick='addToCart(${JSON.stringify(p)})'>افزودن</button>
-              </div>
-            </div>
+  if(!items || items.length===0){
+    productsRow.innerHTML = '<div class="col-12">محصولی یافت نشد.</div>';
+    return;
+  }
+  productsRow.innerHTML = items.map(function(p){
+    var filename = null;
+    if(p.image){
+      filename = p.image.path || p.image.name || null;
+    }
+    var imgUrl = filename ? ('/images/' + encodeURIComponent(filename)) : 'assets/placeholder.png';
+    var title = p.title || p.name || '';
+    return `<div class="col-6 col-md-4 col-lg-3">
+      <div class="card h-100">
+        <img src="${imgUrl}" onerror="this.onerror=null;this.src='assets/placeholder.png'" class="card-img-top" alt="${title}">
+        <div class="card-body d-flex flex-column">
+          <h6 class="card-title mb-1">${title}</h6>
+          <p class="mb-2 small text-muted">${p.shortDesc || ''}</p>
+          <div class="mt-auto d-flex justify-content-between align-items-center">
+            <strong>${p.price ? p.price + ' تومان' : '—'}</strong>
+            <button class="btn btn-sm btn-primary" onclick='addToCart(${JSON.stringify(p)})'>افزودن</button>
           </div>
         </div>
-      `).join('');
-    }
-
-    function renderPagination(page, total){
+      </div>
+    </div>`;
+  }).join('');
+}function renderPagination(page, total){
       let html = '';
       for(let i=1;i<=total;i++){
         html += `<li class="page-item ${i===page?'active':''}"><a class="page-link" href="#" onclick="event.preventDefault(); loadProducts(${i}, document.getElementById('q').value, document.getElementById('sort').value)">${i}</a></li>`;
@@ -146,3 +163,5 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
+

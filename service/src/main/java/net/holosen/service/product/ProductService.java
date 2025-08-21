@@ -130,4 +130,14 @@ public class ProductService implements CRUDService<ProductDto>, HasValidation<Pr
             throw new ValidationException("Please enter price");
         }
     }
+
+    public Page<LimitedProductDto> search(String q, Pageable pageable) {
+        Page<Product> page;
+        if (q == null || q.isBlank()) {
+            page = repository.findAll(pageable);
+        } else {
+            page = repository.findByTitleContainingIgnoreCase(q.trim(), pageable);
+        }
+        return page.map(p -> mapper.map(p, LimitedProductDto.class));
+    }
 }

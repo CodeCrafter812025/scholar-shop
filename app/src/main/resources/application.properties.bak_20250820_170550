@@ -34,10 +34,3 @@ app.file.upload.path = C:/Users/Mohammad/Pictures/Saved Pictures
 
 springdoc.api-docs.path=/api-docs
 springdoc.swagger-ui.path=/swagger-ui
-# SSL dev config — use local keystore
-server.port=443
-server.ssl.enabled=true
-server.ssl.key-store=classpath:keystore.p12
-server.ssl.key-store-password=changeit
-server.ssl.key-store-type=PKCS12
-server.ssl.key-alias=myssl

@@ -10,10 +10,10 @@ import net.holosen.enums.ProductQueryType;
 import net.holosen.service.product.ProductCategoryService;
 import net.holosen.service.product.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -60,6 +60,21 @@ public class ProductController {
                     .message(e.getMessage())
                     .build();
         }
+    }
+
+    @GetMapping("search")
+    public APIResponse<Page<LimitedProductDto>> search(
+            @RequestParam(name="page", defaultValue="0") int page,
+            @RequestParam(name="size", defaultValue="12") int size,
+            @RequestParam(name="q", required=false) String q,
+            @RequestParam(name="sort", required=false) String sort
+    ){
+        Pageable pageable = PageRequest.of(page, size); // ساده؛ می‌‌توانی sort را اضافه کنی
+        Page<LimitedProductDto> result = service.search(q, pageable); // <-- فرضی: service.search
+        return APIResponse.<Page<LimitedProductDto>>builder()
+                .status(APIStatus.Success)
+                .data(result)
+                .build();
     }
 
 }
