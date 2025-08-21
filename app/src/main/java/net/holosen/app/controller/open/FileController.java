@@ -1,13 +1,9 @@
 package net.holosen.app.controller.open;
 
-import net.holosen.common.exceptions.NotFoundException;
-import net.holosen.dto.file.FileDto;
-import net.holosen.service.file.FileService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,44 +11,42 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/file")
 public class FileController {
 
-    @Value("app.file.upload.path")
+    @Value("${app.file.upload.path}")
     private String uploadPath;
 
-    private final FileService service;
+    @GetMapping("/images/{filename:.+}")
+    public ResponseEntity<Resource> serveImage(@PathVariable String filename) {
+        try {
+            Path file = Paths.get(uploadPath).resolve("images/" + filename);
+            Resource resource = new UrlResource(file.toUri());
 
+            if (resource.exists() && resource.isReadable()) {
+                String contentType = determineContentType(filename);
 
-    @Autowired
-    public FileController(FileService service) {
-        this.service = service;
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
-    @GetMapping("{name}")
-    public ResponseEntity<InputStreamResource> getFileByName(@PathVariable String name) {
-        try {
-            FileDto fileDto = service.readByName(name);
-            File file = new File(uploadPath + File.separator + fileDto.getPath());
-            if (!file.exists()){
-                throw new NotFoundException();
-            }
-            InputStream inputStream = new FileInputStream(file);
-            InputStreamResource inputStreamResource = new InputStreamResource(inputStream);
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(fileDto.getContentType()));
-            if (fileDto.getSize() != null){
-                headers.setContentLength(fileDto.getSize());
-            }
-            return new ResponseEntity<>(inputStreamResource , headers , HttpStatus.OK);
-        }catch (NotFoundException | FileNotFoundException e){
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
+    private String determineContentType(String filename) {
+        if (filename.toLowerCase().endsWith(".webp")) return "image/webp";
+        if (filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg")) return "image/jpeg";
+        if (filename.toLowerCase().endsWith(".png")) return "image/png";
+        if (filename.toLowerCase().endsWith(".gif")) return "image/gif";
+        return "application/octet-stream";
     }
 }

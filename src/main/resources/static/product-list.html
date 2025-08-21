@@ -98,7 +98,7 @@
       productsRow.innerHTML = items.map(p => `
         <div class="col-6 col-md-4 col-lg-3">
           <div class="card h-100">
-            <img src="${p.image || 'assets/placeholder.png'}" class="card-img-top" alt="${p.name}">
+            <img src="/api/file/images/${p.imageName}" alt="${p.name}">
             <div class="card-body d-flex flex-column">
               <h6 class="card-title mb-1">${p.name}</h6>
               <p class="mb-2 small text-muted">${p.shortDesc || ''}</p>

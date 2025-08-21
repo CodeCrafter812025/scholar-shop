@@ -16,8 +16,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins(origins.toArray(new String[0]))
+        registry.addMapping("/api/**")
+//                .allowedOrigins(origins.toArray(new String[0]))
+                .allowedOrigins("https://localhost", "http://localhost")
                 .allowedMethods("GET", "POST", "PUT", "DELETE")
                 .allowedHeaders("*")
                 .allowCredentials(true);
@@ -26,6 +27,11 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/images/**")
-                .addResourceLocations("D:/SpringBoot-Files-10-e1a5dc4d-1958-4f78-ad1c-36fb50e7cb84/03/onlineshop/app/src/main/resources/static/images");
+                .addResourceLocations("classpath:/static/images/");
+
+        registry.addResourceHandler("/assets/**")
+                .addResourceLocations("classpath:/static/assets/");
     }
+
+
 }
