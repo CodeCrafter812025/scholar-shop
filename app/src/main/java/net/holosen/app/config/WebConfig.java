@@ -16,21 +16,11 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-//                .allowedOrigins(origins.toArray(new String[0]))
-                .allowedOrigins("https://localhost", "http://localhost")
+        registry.addMapping("/**")
+                .allowedOrigins(origins.toArray(new String[0]))
                 .allowedMethods("GET", "POST", "PUT", "DELETE")
                 .allowedHeaders("*")
                 .allowCredentials(true);
-    }
-
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/images/**")
-                .addResourceLocations("classpath:/static/images/");
-
-        registry.addResourceHandler("/assets/**")
-                .addResourceLocations("classpath:/static/assets/");
     }
 
 
