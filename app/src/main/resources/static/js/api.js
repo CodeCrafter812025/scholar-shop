@@ -16,32 +16,33 @@ async function fetchData(endpoint) {
 // توابع مربوط به محصولات
 const productAPI = {
     getAllProducts: () => fetchData('products'),
-    getProductById: (id) => fetchData(`products/${id}`)
+    getProductById: (id) => fetchData(`products/${id}`),
 
-        // متد ایجاد محصول جدید
-        createProduct: async (productData, token) => {
-            const response = await fetch(`${API_URL}/products`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                },
-                body: JSON.stringify(productData)
-            });
-            if (!response.ok) throw new Error('Failed to create product');
-            return await response.json();
-        },
-        // متد حذف محصول
-        deleteProduct: async (productId, token) => {
-            const response = await fetch(`${API_URL}/products/${productId}`, {
-                method: 'DELETE',
-                headers: {
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                }
-            });
-            if (!response.ok) throw new Error('Failed to delete product');
-            return await response.json();
-        }
+    // متد ایجاد محصول جدید
+    createProduct: async (productData, token) => {
+        const response = await fetch(`${API_URL}/products`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
+            },
+            body: JSON.stringify(productData)
+        });
+        if (!response.ok) throw new Error('Failed to create product');
+        return await response.json();
+    },
+
+    // متد حذف محصول
+    deleteProduct: async (productId, token) => {
+        const response = await fetch(`${API_URL}/products/${productId}`, {
+            method: 'DELETE',
+            headers: {
+                ...(token && { 'Authorization': `Bearer ${token}` })
+            }
+        });
+        if (!response.ok) throw new Error('Failed to delete product');
+        return await response.json();
+    }
 };
 
 // توابع مربوط به کاربران
@@ -54,6 +55,7 @@ const userAPI = {
         });
         return await response.json();
     },
+
     login: async (credentials) => {
         const response = await fetch(`${API_URL}/users/login`, {
             method: 'POST',
@@ -61,7 +63,9 @@ const userAPI = {
             body: JSON.stringify(credentials)
         });
         return await response.json();
-    }
+    },
+
+    // دریافت فهرست تمام کاربران (برای مدیر)
     getAllUsers: async (token) => {
         const response = await fetch(`${API_URL}/users`, {
             headers: {
@@ -70,7 +74,7 @@ const userAPI = {
         });
         if (!response.ok) throw new Error('Failed to fetch users');
         return await response.json();
-    };
+    }
 };
 
 // توابع سبد خرید
@@ -79,13 +83,11 @@ const cartAPI = {
     addToCart: (product) => {
         const cart = cartAPI.getCart();
         const existingItem = cart.find(item => item._id === product._id);
-
         if (existingItem) {
             existingItem.quantity += 1;
         } else {
             cart.push({ ...product, quantity: 1 });
         }
-
         localStorage.setItem('cart', JSON.stringify(cart));
         return cart;
     },
@@ -104,6 +106,7 @@ const orderAPI = {
         });
         return await response.json();
     },
+
     createOrder: async (orderData, token) => {
         const response = await fetch(`${API_URL}/orders`, {
             method: 'POST',
@@ -114,8 +117,9 @@ const orderAPI = {
             body: JSON.stringify(orderData)
         });
         return await response.json();
-    }
+    },
 
+    // دریافت تمام سفارش‌ها (برای مدیر)
     getAllOrders: async (token) => {
         const response = await fetch(`${API_URL}/orders/all`, {
             headers: {
@@ -124,8 +128,7 @@ const orderAPI = {
         });
         if (!response.ok) throw new Error('Failed to fetch orders');
         return await response.json();
-    };
-
+    }
 };
 
 // Export توابع برای استفاده در ماژول‌های دیگر

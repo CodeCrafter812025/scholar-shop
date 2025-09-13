@@ -1,13 +1,17 @@
 import { productAPI, cartAPI } from './api.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
+// رویداد بارگذاری صفحه
+document.addEventListener('DOMContentLoaded', () => {
+    // اگر ظرف محصولات در صفحه باشد، محصولات را بارگذاری کن
     const productsContainer = document.getElementById('products-container');
     if (productsContainer) {
         loadProductsForHome(productsContainer);
     }
+    // همیشه آیکون سبد خرید را به‌روز کن
     updateCartIcon();
 });
 
+// تابع بارگذاری محصولات در صفحه اصلی
 async function loadProductsForHome(container) {
     try {
         showLoading();
@@ -31,61 +35,57 @@ async function loadProductsForHome(container) {
         console.error('Error loading products:', error);
         container.innerHTML = '<p>خطا در بارگذاری محصولات!</p>';
     }
-});
+}
 
 // تابع افزودن به سبد خرید
 window.addToCart = async function(productId) {
     try {
         const product = await productAPI.getProductById(productId);
         cartAPI.addToCart(product);
-        alert('محصول به سبد خرید اضافه شد!');
+        showToast('محصول به سبد خرید اضافه شد!', 'success');
         updateCartIcon();
     } catch (error) {
         console.error('Error adding to cart:', error);
-        alert('خطا در افزودن محصول به سبد خرید!');
+        showToast('خطا در افزودن محصول به سبد خرید!', 'error');
     }
 };
 
-// تابع به‌روزرسانی آیکون سبد خرید
+// به‌روزرسانی آیکون سبد خرید
 function updateCartIcon() {
     const cart = cartAPI.getCart();
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-
     const cartIcon = document.querySelector('.cart-icon');
     if (cartIcon) {
         const badge = cartIcon.nextElementSibling;
-        if (badge) {
-            badge.textContent = totalItems;
-        }
+        if (badge) badge.textContent = totalItems;
     }
 }
 
 // نمایش لودینگ
 function showLoading() {
-    document.querySelector('.loading-spinner').classList.add('active');
+    const spinner = document.querySelector('.loading-spinner');
+    if (spinner) spinner.classList.add('active');
 }
 
 // مخفی کردن لودینگ
 function hideLoading() {
-    document.querySelector('.loading-spinner').classList.remove('active');
+    const spinner = document.querySelector('.loading-spinner');
+    if (spinner) spinner.classList.remove('active');
 }
 
-// مثال استفاده
-showLoading();
-const products = await productAPI.getAllProducts();
-hideLoading();
-
-
+// نمایش Toast پیام
 function showToast(message, type = 'success') {
     const toastEl = document.getElementById('liveToast');
+    if (!toastEl) return;
     const toastBody = toastEl.querySelector('.toast-body');
-
     toastBody.textContent = message;
     toastEl.className = `toast bg-${type === 'success' ? 'success' : 'danger'} text-white`;
-
     const toast = new bootstrap.Toast(toastEl);
     toast.show();
 }
 
-// مثال استفاده
-showToast('محصول به سبد خرید اضافه شد!');
+// اکسپورت توابع مورد نیاز برای سایر فایل‌ها
+window.updateCartIcon = updateCartIcon;
+window.showToast = showToast;
+window.showLoading = showLoading;
+window.hideLoading = hideLoading;
