@@ -17,6 +17,31 @@ async function fetchData(endpoint) {
 const productAPI = {
     getAllProducts: () => fetchData('products'),
     getProductById: (id) => fetchData(`products/${id}`)
+
+        // متد ایجاد محصول جدید
+        createProduct: async (productData, token) => {
+            const response = await fetch(`${API_URL}/products`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                body: JSON.stringify(productData)
+            });
+            if (!response.ok) throw new Error('Failed to create product');
+            return await response.json();
+        },
+        // متد حذف محصول
+        deleteProduct: async (productId, token) => {
+            const response = await fetch(`${API_URL}/products/${productId}`, {
+                method: 'DELETE',
+                headers: {
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                }
+            });
+            if (!response.ok) throw new Error('Failed to delete product');
+            return await response.json();
+        }
 };
 
 // توابع مربوط به کاربران
@@ -37,6 +62,15 @@ const userAPI = {
         });
         return await response.json();
     }
+    getAllUsers: async (token) => {
+        const response = await fetch(`${API_URL}/users`, {
+            headers: {
+                ...(token && { 'Authorization': `Bearer ${token}` })
+            }
+        });
+        if (!response.ok) throw new Error('Failed to fetch users');
+        return await response.json();
+    };
 };
 
 // توابع سبد خرید
@@ -81,6 +115,17 @@ const orderAPI = {
         });
         return await response.json();
     }
+
+    getAllOrders: async (token) => {
+        const response = await fetch(`${API_URL}/orders/all`, {
+            headers: {
+                ...(token && { 'Authorization': `Bearer ${token}` })
+            }
+        });
+        if (!response.ok) throw new Error('Failed to fetch orders');
+        return await response.json();
+    };
+
 };
 
 // Export توابع برای استفاده در ماژول‌های دیگر
