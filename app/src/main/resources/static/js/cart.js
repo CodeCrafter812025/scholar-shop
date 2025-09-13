@@ -14,7 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // نمایش محصولات سبد خرید
     cartItemsContainer.innerHTML = cart.map(item => {
-        const imagePath = item.image?.path || item.image || 'https://via.placeholder.com/100';
+        const imagePath = item.image?.path
+            ? item.image.path
+            : item.image
+                ? `/images/${item.image}`
+                : 'https://via.placeholder.com/100';
+
         const title = item.title || item.name || '';
         return `
             <div class="row mb-3 align-items-center">

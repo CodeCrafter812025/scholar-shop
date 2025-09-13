@@ -8,7 +8,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // نمایش محصولات
     productsContainer.innerHTML = products.map(product => {
-        const imagePath = product.image?.path || product.image || 'https://via.placeholder.com/300';
+        // دریافت مسیر تصویر: ابتدا از image.path استفاده می‌کنیم، در غیر این صورت از نام فایل و پوشه images
+        const imagePath = product.image?.path
+            ? product.image.path
+            : product.image
+                ? `/images/${product.image}`
+                : 'https://via.placeholder.com/300';
+
         const title = product.title || product.name || '';
         const desc = product.description || '';
         const id = product.id || product._id;
