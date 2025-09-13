@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سبد خرید - Scholar Shop</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<!-- Navbar (مشابه قبل) -->
+<!-- در index.html -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">Scholar Shop</a>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/">خانه</a></li>
+                <li class="nav-item"><a class="nav-link" href="/products.html">محصولات</a></li>
+                <li class="nav-item">
+                    <a class="nav-link position-relative" href="/cart.html">
+                        <i class="fas fa-shopping-cart cart-icon"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+                    </a>
+                </li>
+                <li class="nav-item"><a class="nav-link" href="/auth.html">ورود/ثبت‌نام</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <h1>سبد خرید شما</h1>
+    <div id="cart-items">
+        <!-- محصولات سبد خرید اینجا نمایش داده می‌شوند -->
+    </div>
+    <div class="mt-4">
+        <h3>جمع کل: <span id="cart-total">0</span> تومان</h3>
+        <button class="btn btn-success btn-lg mt-3">تکمیل خرید</button>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="bg-dark text-white text-center py-3 mt-5">
+    <p>&copy; 2023 Scholar Shop. All rights reserved.</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- بعد -->
+<script type="module" src="js/api.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

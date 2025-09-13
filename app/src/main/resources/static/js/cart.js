@@ -1,0 +1,66 @@
+import { cartAPI } from './api.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const cartTotalElement = document.getElementById('cart-total');
+
+    const cart = cartAPI.getCart();
+
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p>سبد خرید شما خالی است!</p>';
+        return;
+    }
+
+    // نمایش محصولات سبد خرید
+    cartItemsContainer.innerHTML = cart.map(item => `
+        <div class="row mb-3 align-items-center">
+            <div class="col-md-2">
+                <img src="${item.image || 'https://via.placeholder.com/100'}" class="img-fluid" alt="${item.name}">
+            </div>
+            <div class="col-md-4">
+                <h5>${item.name}</h5>
+                <p>${item.price} تومان</p>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group">
+                    <button class="btn btn-outline-secondary" onclick="updateQuantity('${item._id}', -1)">-</button>
+                    <input type="text" class="form-control text-center" value="${item.quantity}" readonly>
+                    <button class="btn btn-outline-secondary" onclick="updateQuantity('${item._id}', 1)">+</button>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <h5>${item.price * item.quantity} تومان</h5>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-danger" onclick="removeFromCart('${item._id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    // محاسبه جمع کل
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    cartTotalElement.textContent = total;
+});
+
+// توابع مدیریت سبد خرید
+window.updateQuantity = function(productId, change) {
+    const cart = cartAPI.getCart();
+    const item = cart.find(item => item._id === productId);
+
+    if (item) {
+        item.quantity += change;
+        if (item.quantity <= 0) {
+            cartAPI.removeFromCart(productId);
+        } else {
+            localStorage.setItem('cart', JSON.stringify(cart));
+        }
+        location.reload(); // بارگذاری مجدد صفحه برای به‌روزرسانی
+    }
+};
+
+window.removeFromCart = function(productId) {
+    cartAPI.removeFromCart(productId);
+    location.reload();
+};

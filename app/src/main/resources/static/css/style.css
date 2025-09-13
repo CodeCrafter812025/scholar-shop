@@ -1,0 +1,77 @@
+/* استایل‌های عمومی */
+body {
+    font-family: 'Vazirmatn', sans-serif; /* فونت فارسی */
+}
+
+/* استایل‌های کارت محصولات */
+.card {
+    transition: transform 0.3s;
+    height: 100%;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card-img-top {
+    height: 200px;
+    object-fit: cover;
+}
+
+/* استایل‌های ناوبر */
+.navbar-brand {
+    font-weight: bold;
+}
+
+
+/* استایل لودینگ */
+.loading-spinner {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+}
+
+.loading-spinner.active {
+    display: block;
+}
+
+
+/* انیمیشن fade-in */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* انیمیشن برای کارت‌ها */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+
+/* استایل‌های ریسپانسیو */
+@media (max-width: 768px) {
+    .card-img-top {
+        height: 150px;
+    }
+
+    .navbar-nav {
+        text-align: center;
+    }
+
+    .cart-icon {
+        margin-top: 10px;
+    }
+}
