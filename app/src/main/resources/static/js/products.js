@@ -3,10 +3,10 @@ import { productAPI, cartAPI } from './api.js';
 document.addEventListener('DOMContentLoaded', async () => {
     const productsContainer = document.getElementById('products-container');
 
-    // دریافت محصولات (با page=0 و size=100 برای بارگذاری همه)
+    // دریافت محصولات (page=0 و size=100)
     const products = await productAPI.getAllProducts(0, 100);
 
-    // نمایش محصولات در صفحه
+    // نمایش محصولات
     productsContainer.innerHTML = products.map(product => {
         const imagePath = product.image?.path || product.image || 'https://via.placeholder.com/300';
         const title = product.title || product.name || '';
@@ -42,16 +42,13 @@ window.addToCart = async function(productId) {
     }
 };
 
-// تابع به‌روزرسانی آیکون سبد خرید
+// به‌روزرسانی نمایش تعداد سبد
 function updateCartIcon() {
     const cart = cartAPI.getCart();
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-
     const cartIcon = document.querySelector('.cart-icon');
     if (cartIcon) {
         const badge = cartIcon.nextElementSibling;
-        if (badge) {
-            badge.textContent = totalItems;
-        }
+        if (badge) badge.textContent = totalItems;
     }
 }

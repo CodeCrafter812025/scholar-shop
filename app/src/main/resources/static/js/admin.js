@@ -84,16 +84,17 @@ async function loadProducts() {
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-2">
-                            <img src="${product.image || 'https://via.placeholder.com/100'}" class="img-fluid">
+                            <img src="${product.image?.path || product.image || 'https://via.placeholder.com/100'}" class="img-fluid">
                         </div>
                         <div class="col-md-8">
-                            <h5>${product.name}</h5>
-                            <p>${product.description.substring(0, 100)}...</p>
+                            <h5>${product.title || product.name}</h5>
+                            <p>${(product.description || '').substring(0, 100)}...</p>
                             <p><strong>قیمت: ${product.price} تومان</strong></p>
                         </div>
                         <div class="col-md-2">
+                            <!-- دکمه‌های ویرایش و حذف -->
                             <button class="btn btn-warning btn-sm mb-2">ویرایش</button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product._id}')">حذف</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id || product._id}')">حذف</button>
                         </div>
                     </div>
                 </div>
@@ -103,6 +104,7 @@ async function loadProducts() {
         productsList.innerHTML = '<p>خطا در بارگذاری محصولات!</p>';
     }
 }
+
 
 async function loadUsers() {
     const usersList = document.getElementById('users-list');

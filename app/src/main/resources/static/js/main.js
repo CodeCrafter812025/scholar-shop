@@ -2,15 +2,14 @@ import { productAPI, cartAPI } from './api.js';
 
 // رویداد بارگذاری صفحه
 document.addEventListener('DOMContentLoaded', () => {
-    // اگر ظرف محصولات در صفحه باشد، محصولات را بارگذاری کن
     const productsContainer = document.getElementById('products-container');
     if (productsContainer) {
         loadProductsForHome(productsContainer);
     }
-    // همیشه آیکون سبد خرید را به‌روز کن
     updateCartIcon();
 });
 
+// بارگذاری محصولات صفحه‌ی اصلی
 async function loadProductsForHome(container) {
     try {
         showLoading();
@@ -42,7 +41,6 @@ async function loadProductsForHome(container) {
     }
 }
 
-
 // تابع افزودن به سبد خرید
 window.addToCart = async function(productId) {
     try {
@@ -56,7 +54,7 @@ window.addToCart = async function(productId) {
     }
 };
 
-// به‌روزرسانی آیکون سبد خرید
+// به‌روزرسانی نمایش تعداد سبد
 function updateCartIcon() {
     const cart = cartAPI.getCart();
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -67,13 +65,12 @@ function updateCartIcon() {
     }
 }
 
-// نمایش لودینگ
+// نمایش و پنهان کردن لودینگ
 function showLoading() {
     const spinner = document.querySelector('.loading-spinner');
     if (spinner) spinner.classList.add('active');
 }
 
-// مخفی کردن لودینگ
 function hideLoading() {
     const spinner = document.querySelector('.loading-spinner');
     if (spinner) spinner.classList.remove('active');
@@ -90,7 +87,7 @@ function showToast(message, type = 'success') {
     toast.show();
 }
 
-// اکسپورت توابع مورد نیاز برای سایر فایل‌ها
+// اکسپورت توابعی که نیاز است global باشند
 window.updateCartIcon = updateCartIcon;
 window.showToast = showToast;
 window.showLoading = showLoading;
