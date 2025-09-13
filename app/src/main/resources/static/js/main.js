@@ -11,31 +11,37 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCartIcon();
 });
 
-// تابع بارگذاری محصولات در صفحه اصلی
 async function loadProductsForHome(container) {
     try {
         showLoading();
-        const products = await productAPI.getAllProducts();
+        const products = await productAPI.getAllProducts(0, 12);
         hideLoading();
-        container.innerHTML = products.map(product => `
-            <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                    <img src="${product.image || 'https://via.placeholder.com/300'}" class="card-img-top" alt="${product.name}">
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">${product.name}</h5>
-                        <p class="card-text flex-grow-1">${product.description.substring(0, 100)}...</p>
-                        <p class="card-text"><strong>قیمت: ${product.price} تومان</strong></p>
-                        <button class="btn btn-primary mt-auto" onclick="addToCart('${product._id}')">افزودن به سبد خرید</button>
+        container.innerHTML = products.map(product => {
+            const imagePath = product.image?.path || product.image || 'https://via.placeholder.com/300';
+            const title = product.title || product.name || '';
+            const desc = product.description || '';
+            const id = product.id || product._id;
+            return `
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <img src="${imagePath}" class="card-img-top" alt="${title}">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">${title}</h5>
+                            <p class="card-text flex-grow-1">${desc.substring(0, 100)}...</p>
+                            <p class="card-text"><strong>قیمت: ${product.price} تومان</strong></p>
+                            <button class="btn btn-primary mt-auto" onclick="addToCart('${id}')">افزودن به سبد خرید</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (error) {
         hideLoading();
         console.error('Error loading products:', error);
         container.innerHTML = '<p>خطا در بارگذاری محصولات!</p>';
     }
 }
+
 
 // تابع افزودن به سبد خرید
 window.addToCart = async function(productId) {

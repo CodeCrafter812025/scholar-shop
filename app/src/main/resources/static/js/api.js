@@ -15,7 +15,8 @@ async function fetchData(endpoint) {
 
 // توابع مربوط به محصولات
 const productAPI = {
-    getAllProducts: () => fetchData('products'),
+        getAllProducts: (page = 0, size = 20) =>
+            fetchData(`product/search?page=${page}&size=${size}`),
     getProductById: (id) => fetchData(`products/${id}`),
 
     // متد ایجاد محصول جدید
