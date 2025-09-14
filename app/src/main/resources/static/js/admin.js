@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // بارگذاری سفارش‌ها
     await loadOrders();
 
+    // بارگذاری گزارش‌ها
+    await loadReports();
+
     // مدیریت فرم افزودن محصول
     document.getElementById('addProductForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -173,6 +176,93 @@ async function loadOrders() {
         ordersList.innerHTML = '<p>خطا در بارگذاری سفارش‌ها!</p>';
         console.error(error);
     }
+}
+
+async function loadReports() {
+    const bestContainer = document.getElementById('best-selling-container');
+    const monthlyContainer = document.getElementById('monthly-sales-container');
+
+    try {
+        const token = localStorage.getItem('token');
+        const orders = await orderAPI.getAllOrders(token);
+
+        if (!orders || orders.length === 0) {
+            bestContainer.innerHTML = '<p>هیچ سفارشی برای محاسبه وجود ندارد!</p>';
+            monthlyContainer.innerHTML = '<p>هیچ سفارشی برای محاسبه وجود ندارد!</p>';
+            return;
+        }
+
+        // پرفروش‌ترین محصول
+        const best = computeBestSellingProduct(orders);
+        if (best) {
+            bestContainer.innerHTML = `
+                <div class="card">
+                    <div class="card-body d-flex align-items-center">
+                        <img src="${best.product.image?.path
+                            || (best.product.image ? `/images/${best.product.image}` : 'https://via.placeholder.com/100')}"
+                             alt="${best.product.title || best.product.name}"
+                             class="img-thumbnail me-3" style="width:100px;height:auto;">
+                        <div>
+                            <h5>${best.product.title || best.product.name}</h5>
+                            <p>تعداد فروش: <strong>${best.quantity}</strong></p>
+                            <p>مبلغ کل فروش: <strong>${best.total.toLocaleString()}</strong> تومان</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            bestContainer.innerHTML = '<p>پرفروش‌ترین محصول یافت نشد.</p>';
+        }
+
+        // فروش ماهانه
+        const monthly = computeMonthlySales(orders);
+        // تولید جدول ماهانه
+        let tableHtml = '<table class="table table-bordered"><thead><tr><th>ماه</th><th>مبلغ فروش (تومان)</th></tr></thead><tbody>';
+        Object.keys(monthly).sort().forEach(month => {
+            tableHtml += `<tr><td>${month}</td><td>${monthly[month].toLocaleString()}</td></tr>`;
+        });
+        tableHtml += '</tbody></table>';
+        monthlyContainer.innerHTML = tableHtml;
+    } catch (error) {
+        console.error('خطا در بارگذاری گزارشات:', error);
+        bestContainer.innerHTML = '<p>خطا در بارگذاری گزارش پرفروش‌ترین محصول!</p>';
+        monthlyContainer.innerHTML = '<p>خطا در بارگذاری گزارش فروش ماهانه!</p>';
+    }
+}
+
+// محاسبه پرفروش‌ترین محصول
+function computeBestSellingProduct(orders) {
+    const productMap = {};
+    orders.forEach(order => {
+        // بعضی مدل‌ها از items استفاده می‌کنند، بعضی از products
+        const items = order.items || order.products || [];
+        items.forEach(item => {
+            const prod = item.product;
+            const id = prod.id || prod._id;
+            if (!productMap[id]) {
+                productMap[id] = { product: prod, quantity: 0, total: 0 };
+            }
+            productMap[id].quantity += item.quantity || 1;
+            // اگر price در item موجود باشد، استفاده کنیم، وگرنه از محصول بخوانیم
+            const price = item.price || prod.price || 0;
+            productMap[id].total += price * (item.quantity || 1);
+        });
+    });
+    const list = Object.values(productMap);
+    return list.sort((a, b) => b.quantity - a.quantity)[0];
+}
+
+// محاسبه فروش ماهانه (براساس createDate)
+function computeMonthlySales(orders) {
+    const monthly = {};
+    orders.forEach(order => {
+        const date = new Date(order.createDate || order.createdAt);
+        if (isNaN(date)) return;
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthly[key]) monthly[key] = 0;
+        monthly[key] += order.totalAmount || order.amount || 0;
+    });
+    return monthly;
 }
 
 async function deleteProduct(productId) {
