@@ -8,24 +8,17 @@ async function fetchData(endpoint) {
     return await response.json();
 }
 
-// توابع مربوط به محصولات
+// توابع مربوط به محصولات (مثال ساده، بسته به پیاده‌سازی خود تغییر دهید)
 const productAPI = {
-    // دریافت همه محصولات از endpoint search و استخراج آرایه‌ی محصولات
     getAllProducts: async (page = 0, size = 20) => {
         const res = await fetchData(`product/search?page=${page}&size=${size}`);
-        // اگر پاسخ به شکل { data: { content: [...] } } یا { content: [...] } باشد
         const items = res.data?.content || res.content || res;
         return Array.isArray(items) ? items : [];
     },
-
-    // دریافت محصول بر اساس شناسه
     getProductById: async (id) => {
         const res = await fetchData(`product/${id}`);
-        // در پاسخ‌های API معمولا داده در فیلد data قرار می‌گیرد
         return res.data || res;
     },
-
-    // ایجاد محصول جدید (ممکن است مسیر back-end شما متفاوت باشد)
     createProduct: async (productData, token) => {
         const response = await fetch(`${API_URL}/product`, {
             method: 'POST',
@@ -38,8 +31,6 @@ const productAPI = {
         if (!response.ok) throw new Error('Failed to create product');
         return await response.json();
     },
-
-    // حذف محصول
     deleteProduct: async (productId, token) => {
         const response = await fetch(`${API_URL}/product/${productId}`, {
             method: 'DELETE',
@@ -54,25 +45,20 @@ const productAPI = {
 
 // توابع مربوط به کاربران
 const userAPI = {
-    register: async (userData) => {
-        const response = await fetch(`${API_URL}/users/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userData)
-        });
-        return await response.json();
+    // ثبت‌نام عمومی وجود ندارد؛ در صورت نیاز می‌توانید این متد را به API مدیریتی متصل کنید
+    register: async (/* userData */) => {
+        throw new Error('Registration via public API is not supported.');
     },
-
+    // مسیر صحیح ورود
     login: async (credentials) => {
-        const response = await fetch(`${API_URL}/users/login`, {
+        const response = await fetch(`${API_URL}/user/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(credentials)
         });
         return await response.json();
     },
-
-    // دریافت فهرست تمام کاربران (برای مدیر)
+    // دریافت همه کاربران برای مدیر
     getAllUsers: async (token) => {
         const response = await fetch(`${API_URL}/users`, {
             headers: {
@@ -84,22 +70,16 @@ const userAPI = {
     }
 };
 
-// توابع سبد خرید
+// توابع سبد خرید (همانند قبل)
 const cartAPI = {
-    // خواندن سبد از localStorage
     getCart: () => JSON.parse(localStorage.getItem('cart')) || [],
-
-    // افزودن محصول به سبد
     addToCart: (product) => {
         const cart = cartAPI.getCart();
         const productId = product.id || product._id;
-        let existingItem = cart.find(item =>
-            (item.id === productId) || (item._id === productId)
-        );
+        const existingItem = cart.find(item => item.id === productId || item._id === productId);
         if (existingItem) {
             existingItem.quantity += 1;
         } else {
-            // ذخیره‌ی id و title برای نمایش در سبد
             cart.push({
                 id: productId,
                 title: product.title || product.name,
@@ -111,8 +91,6 @@ const cartAPI = {
         localStorage.setItem('cart', JSON.stringify(cart));
         return cart;
     },
-
-    // حذف کامل یک محصول از سبد
     removeFromCart: (productId) => {
         const cart = cartAPI.getCart().filter(item =>
             (item.id !== productId) && (item._id !== productId)
@@ -122,7 +100,7 @@ const cartAPI = {
     }
 };
 
-// توابع مربوط به سفارش‌ها
+// توابع مربوط به سفارش‌ها (همانند قبل)
 const orderAPI = {
     getUserOrders: async (token) => {
         const response = await fetch(`${API_URL}/orders`, {
@@ -130,7 +108,6 @@ const orderAPI = {
         });
         return await response.json();
     },
-
     createOrder: async (orderData, token) => {
         const response = await fetch(`${API_URL}/orders`, {
             method: 'POST',
@@ -142,8 +119,6 @@ const orderAPI = {
         });
         return await response.json();
     },
-
-    // دریافت تمام سفارش‌ها (برای مدیر)
     getAllOrders: async (token) => {
         const response = await fetch(`${API_URL}/orders/all`, {
             headers: {
@@ -155,5 +130,5 @@ const orderAPI = {
     }
 };
 
-// خروجی گرفتن برای ماژول‌های دیگر
+// خروجی گرفتن برای استفاده در فایل‌های دیگر
 export { API_URL, productAPI, userAPI, cartAPI, orderAPI };
