@@ -4,17 +4,30 @@ import { userAPI } from './api.js';
 document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
+    // در این پروژه فیلد loginEmail همان نام کاربری است
+    const username = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
 
     try {
-        const response = await userAPI.login({ email, password });
-        alert('ورود با موفقیت انجام شد!');
-        // ذخیره توکن در LocalStorage
+        const response = await userAPI.login({ username, password });
+
+        // اگر بک‌اند وضعیت خطا برگرداند
+        if (!response || response.status === 'Error' || !response.token) {
+            alert('نام کاربری یا رمز عبور اشتباه است.');
+            return;
+        }
+
+        // ذخیرهٔ توکن در LocalStorage
         localStorage.setItem('token', response.token);
-        // هدایت به صفحه اصلی
-        window.location.href = '/';
+
+        // اگر نام کاربری admin بود، به پنل ادمین منتقل شو
+        if ((response.username || username).toLowerCase() === 'admin') {
+            window.location.href = '/admin.html';
+        } else {
+            window.location.href = '/';
+        }
     } catch (error) {
+        console.error('Login error:', error);
         alert('خطا در ورود: ' + error.message);
     }
 });
