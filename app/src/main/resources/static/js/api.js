@@ -8,7 +8,7 @@ async function fetchData(endpoint) {
     return await response.json();
 }
 
-// توابع مربوط به محصولات (مثال ساده، بسته به پیاده‌سازی خود تغییر دهید)
+// توابع مربوط به محصولات (مثال ساده)
 const productAPI = {
     getAllProducts: async (page = 0, size = 20) => {
         const res = await fetchData(`product/search?page=${page}&size=${size}`);
@@ -45,6 +45,15 @@ const productAPI = {
 
 // توابع مربوط به کاربران
 const userAPI = {
+    // متد ورود (login) – از مسیر صحیح استفاده می‌کند
+    login: async (credentials) => {
+        const response = await fetch(`${API_URL}/user/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials)
+        });
+        return await response.json();
+    },
     // متد دریافت همه کاربران برای مدیر
     getAllUsers: async (token, page = 0, size = 50) => {
         const response = await fetch(`${API_URL}/panel/user?page=${page}&size=${size}`, {
@@ -55,7 +64,6 @@ const userAPI = {
         if (!response.ok) {
             throw new Error('Failed to fetch users');
         }
-        // پاسخ از نوع APIPanelResponse است؛ فیلد data شامل لیست کاربران
         const data = await response.json();
         return data.data || data;
     }
@@ -91,9 +99,9 @@ const cartAPI = {
     }
 };
 
-// توابع مربوط به سفارش‌ها (فاکتورها)
+// توابع مربوط به فاکتورها (سفارش‌ها)
 const orderAPI = {
-    // دریافت فاکتورهای یک کاربر
+    // دریافت فاکتورهای یک کاربر خاص
     getOrdersByUser: async (userId, token) => {
         const response = await fetch(`${API_URL}/panel/invoice/user/${userId}`, {
             headers: {
@@ -105,8 +113,6 @@ const orderAPI = {
         }
         return await response.json();
     }
-    // توجه: Endpoint عمومی برای "تمام سفارش‌ها" وجود ندارد
 };
 
-// خروجی گرفتن برای استفاده در فایل‌های دیگر
 export { API_URL, productAPI, userAPI, cartAPI, orderAPI };
