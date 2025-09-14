@@ -45,28 +45,19 @@ const productAPI = {
 
 // توابع مربوط به کاربران
 const userAPI = {
-    // ثبت‌نام عمومی وجود ندارد؛ در صورت نیاز می‌توانید این متد را به API مدیریتی متصل کنید
-    register: async (/* userData */) => {
-        throw new Error('Registration via public API is not supported.');
-    },
-    // مسیر صحیح ورود
-    login: async (credentials) => {
-        const response = await fetch(`${API_URL}/user/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(credentials)
-        });
-        return await response.json();
-    },
-    // دریافت همه کاربران برای مدیر
-    getAllUsers: async (token) => {
-        const response = await fetch(`${API_URL}/users`, {
+    // متد دریافت همه کاربران برای مدیر
+    getAllUsers: async (token, page = 0, size = 50) => {
+        const response = await fetch(`${API_URL}/panel/user?page=${page}&size=${size}`, {
             headers: {
                 ...(token && { 'Authorization': `Bearer ${token}` })
             }
         });
-        if (!response.ok) throw new Error('Failed to fetch users');
-        return await response.json();
+        if (!response.ok) {
+            throw new Error('Failed to fetch users');
+        }
+        // پاسخ از نوع APIPanelResponse است؛ فیلد data شامل لیست کاربران
+        const data = await response.json();
+        return data.data || data;
     }
 };
 
@@ -100,34 +91,21 @@ const cartAPI = {
     }
 };
 
-// توابع مربوط به سفارش‌ها (همانند قبل)
+// توابع مربوط به سفارش‌ها (فاکتورها)
 const orderAPI = {
-    getUserOrders: async (token) => {
-        const response = await fetch(`${API_URL}/orders`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        return await response.json();
-    },
-    createOrder: async (orderData, token) => {
-        const response = await fetch(`${API_URL}/orders`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(orderData)
-        });
-        return await response.json();
-    },
-    getAllOrders: async (token) => {
-        const response = await fetch(`${API_URL}/orders/all`, {
+    // دریافت فاکتورهای یک کاربر
+    getOrdersByUser: async (userId, token) => {
+        const response = await fetch(`${API_URL}/panel/invoice/user/${userId}`, {
             headers: {
                 ...(token && { 'Authorization': `Bearer ${token}` })
             }
         });
-        if (!response.ok) throw new Error('Failed to fetch orders');
+        if (!response.ok) {
+            throw new Error('Failed to fetch orders for user');
+        }
         return await response.json();
     }
+    // توجه: Endpoint عمومی برای "تمام سفارش‌ها" وجود ندارد
 };
 
 // خروجی گرفتن برای استفاده در فایل‌های دیگر

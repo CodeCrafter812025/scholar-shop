@@ -4,8 +4,8 @@ import { userAPI } from './api.js';
 document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // در فرم فعلی، فیلد نام کاربری با id="loginEmail" تعریف شده است
-    const username = document.getElementById('loginEmail')?.value.trim();
+    // گرفتن نام کاربری و رمز عبور از فرم
+    const username = document.getElementById('loginUsername')?.value.trim();
     const password = document.getElementById('loginPassword')?.value.trim();
 
     if (!username || !password) {
@@ -14,19 +14,20 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     }
 
     try {
+        // ارسال درخواست ورود
         const response = await userAPI.login({ username, password });
 
-        // پاسخ سرور؛ در صورت خطا
+        // بررسی پاسخ سرور
         if (!response || response.status === 'Error' || !response.data) {
             alert(response?.message || 'نام کاربری یا رمز عبور اشتباه است.');
             return;
         }
 
-        // ذخیره توکن دریافتی در localStorage
+        // ذخیره توکن در localStorage
         const token = response.data.token || response.token;
         localStorage.setItem('token', token);
 
-        // هدایت ادمین به پنل مدیریت
+        // هدایت بر اساس نام کاربری
         const loggedInUsername = response.data.username || username;
         if (loggedInUsername.toLowerCase() === 'admin') {
             window.location.href = '/admin.html';
@@ -39,7 +40,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     }
 });
 
-// مدیریت فرم ثبت‌نام (در حال حاضر غیرقابل استفاده است)
+// مدیریت فرم ثبت‌نام (در بک‌اند پیاده‌سازی نشده است)
 document.getElementById('registerForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
     alert('امکان ثبت‌نام از این طریق وجود ندارد. لطفاً با مدیر سیستم تماس بگیرید.');

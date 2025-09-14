@@ -109,6 +109,7 @@ async function loadProducts() {
 }
 
 
+// بارگذاری کاربران
 async function loadUsers() {
     const usersList = document.getElementById('users-list');
     usersList.innerHTML = '<p>در حال بارگذاری کاربران...</p>';
@@ -122,9 +123,8 @@ async function loadUsers() {
         usersList.innerHTML = users.map(user => `
             <div class="card mb-2">
                 <div class="card-body">
-                    <h5 class="card-title">${user.name || user.username || user.email}</h5>
+                    <h5 class="card-title">${user.firstname || user.username || user.email}</h5>
                     <p class="card-text"><strong>ایمیل:</strong> ${user.email || ''}</p>
-                    ${user.role ? `<p class="card-text"><strong>نقش:</strong> ${user.role}</p>` : ''}
                 </div>
             </div>
         `).join('');
@@ -134,47 +134,40 @@ async function loadUsers() {
     }
 }
 
+// دریافت و نمایش فاکتورهای همهٔ کاربران
 async function loadOrders() {
     const ordersList = document.getElementById('orders-list');
     ordersList.innerHTML = '<p>در حال بارگذاری سفارش‌ها...</p>';
     try {
         const token = localStorage.getItem('token');
-        const orders = await orderAPI.getAllOrders(token);
-        if (!orders || orders.length === 0) {
+        const users = await userAPI.getAllUsers(token);
+        const allInvoices = [];
+        // واکشی فاکتورها برای هر کاربر
+        for (const user of users) {
+            const invoices = await orderAPI.getOrdersByUser(user.id, token);
+            allInvoices.push(...invoices.data);
+        }
+        if (allInvoices.length === 0) {
             ordersList.innerHTML = '<p>سفارشی ثبت نشده است!</p>';
             return;
         }
-        ordersList.innerHTML = orders.map(order => {
-            const status = order.status || '';
-            const statusBadge = (status === 'completed' || status === 'paid') ? 'success' : 'warning';
-            const products = order.products || order.items || [];
-            const user = order.user || order.customer || {};
-            const total = order.totalAmount || order.total || order.amount || 0;
-            return `
-                <div class="card mb-3">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>سفارش #${order._id || order.id || ''}</span>
-                        <span class="badge bg-${statusBadge}">${status}</span>
-                    </div>
-                    <div class="card-body">
-                        <h6>کاربر: ${user.name || user.username || user.email || ''}</h6>
-                        <h6>محصولات:</h6>
-                        <ul>
-                            ${products.map(item => {
-                                const name = item.product?.name || item.name || '';
-                                const quantity = item.quantity || item.count || 1;
-                                const price = item.price || item.product?.price || 0;
-                                return `<li>${name} - تعداد: ${quantity} - قیمت: ${price} تومان</li>`;
-                            }).join('')}
-                        </ul>
-                        <h5 class="text-primary">جمع کل: ${total} تومان</h5>
-                    </div>
+        // نمایش همه فاکتورها (به‌طور ساده)
+        ordersList.innerHTML = allInvoices.map(order => `
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>سفارش #${order.id}</span>
+                    <span class="badge bg-${order.status === 'paid' ? 'success' : 'warning'}">${order.status}</span>
                 </div>
-            `;
-        }).join('');
+                <div class="card-body">
+                    <h6>کاربر: ${order.user.firstname || order.user.username || ''}</h6>
+                    <p><strong>قیمت کل:</strong> ${order.totalAmount} تومان</p>
+                    <!-- در صورت نیاز، جزئیات بیشتری نمایش دهید -->
+                </div>
+            </div>
+        `).join('');
     } catch (error) {
         ordersList.innerHTML = '<p>خطا در بارگذاری سفارش‌ها!</p>';
-        console.error(error);
+        console.error('loadOrders', error);
     }
 }
 
@@ -265,15 +258,18 @@ function computeMonthlySales(orders) {
     return monthly;
 }
 
+// تابع حذف محصول
 async function deleteProduct(productId) {
-    if (confirm('آیا از حذف این محصول مطمئن هستید؟')) {
+    if (!confirm('آیا از حذف این محصول مطمئن هستید؟')) return;
+    try {
         const token = localStorage.getItem('token');
-        try {
-            await productAPI.deleteProduct(productId, token);
-            alert('محصول با موفقیت حذف شد!');
-            await loadProducts();
-        } catch (error) {
-            alert('خطا در حذف محصول!');
-        }
+        await productAPI.deleteProduct(productId, token);
+        alert('محصول با موفقیت حذف شد');
+        // بارگذاری مجدد لیست محصولات
+        loadProducts();
+    } catch (error) {
+        console.error('deleteProduct', error);
+        alert('خطا در حذف محصول!');
     }
 }
+
