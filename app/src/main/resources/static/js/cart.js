@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCart();
 });
 
-// تابع نمایش سبد خرید و محاسبه مجموع
+// تابع نمایش سبد خرید
 function renderCart() {
     const cartItemsContainer = document.getElementById('cart-items');
     const cartTotalElement = document.getElementById('cart-total');
@@ -58,7 +58,7 @@ function renderCart() {
     cartTotalElement.textContent = total;
 }
 
-// به‌روزرسانی تعداد کالا
+// به‌روزرسانی quantity
 window.updateQuantity = function(productId, change) {
     const cart = cartAPI.getCart();
     const index = cart.findIndex(item => item.id == productId || item._id == productId);
@@ -68,14 +68,14 @@ window.updateQuantity = function(productId, change) {
             cart.splice(index, 1);
         }
         localStorage.setItem('cart', JSON.stringify(cart));
-        renderCart(); // به‌روزرسانی نمایش
+        renderCart();
     }
 };
 
-// حذف کالا از سبد
+// حذف آیتم از سبد
 window.removeFromCart = function(productId) {
-    const cart = cartAPI.getCart().filter(item => item.id != productId && item._id != productId);
-    localStorage.setItem('cart', JSON.stringify(cart));
+    const newCart = cartAPI.getCart().filter(item => item.id != productId && item._id != productId);
+    localStorage.setItem('cart', JSON.stringify(newCart));
     renderCart();
 };
 
@@ -93,7 +93,7 @@ document.getElementById('checkoutBtn')?.addEventListener('click', async () => {
         return;
     }
     try {
-        // تبدیل اقلام سبد به فرمت مورد نیاز API
+        // آماده‌سازی داده‌های سفارش
         const items = cart.map(item => ({
             productId: parseInt(item.id, 10),
             quantity: item.quantity

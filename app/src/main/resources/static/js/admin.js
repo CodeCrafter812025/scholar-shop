@@ -4,32 +4,29 @@ import { productAPI, userAPI, orderAPI } from './api.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const token = localStorage.getItem('token');
-
     if (!token) {
         alert('لطفاً وارد شوید!');
         window.location.href = 'auth.html';
         return;
     }
 
+    // بارگذاری بخش‌ها
     await loadProducts();
     await loadUsers();
     await loadOrders();
     await loadReports();
 
-    // فرم افزودن محصول
+    // رویداد ثبت محصول
     document.getElementById('addProductForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-
         const raw = Object.fromEntries(new FormData(e.target).entries());
-        // تبدیل ورودی به فیلدهای مورد انتظار DTO
+        // تبدیل فیلدها به فرمت مورد انتظار
         const productData = {
             title: raw.name,
             description: raw.description,
             price: parseInt(raw.price, 10),
-            // تصویر به صورت شیء FileDto شامل path یا id
             image: raw.image ? { path: raw.image } : null
         };
-
         try {
             await productAPI.createProduct(productData, token);
             alert('محصول جدید با موفقیت افزوده شد');
@@ -42,16 +39,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // دانلود گزارش سفارش‌ها
+    // رویداد دانلود گزارش سفارش‌ها
     document.getElementById('download-report-btn')?.addEventListener('click', async () => {
         try {
-            const allInvoices = await collectAllInvoices();
-            if (!allInvoices.length) {
+            const invoices = await collectAllInvoices();
+            if (!invoices.length) {
                 alert('هیچ سفارشی برای گزارش وجود ندارد.');
                 return;
             }
             const header = ['OrderID','UserName','Status','Total','Products'];
-            const rows = allInvoices.map(order => {
+            const rows = invoices.map(order => {
                 const id = order.id || order._id || '';
                 const userName = order.user?.firstname || order.user?.name || order.user?.username || '';
                 const status = order.status || '';
@@ -74,13 +71,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         } catch (err) {
-            console.error('report error', err);
+            console.error('download-report', err);
             alert('خطا در دریافت گزارش سفارش‌ها!');
         }
     });
 });
 
-// جمع‌آوری همه فاکتورهای کاربران (برای پنل)
+// جمع‌آوری همه فاکتورهای کاربران برای پنل
 async function collectAllInvoices() {
     const token = localStorage.getItem('token');
     const users = await userAPI.getAllUsers(token);
@@ -142,7 +139,7 @@ async function loadProducts() {
     }
 }
 
-// بارگذاری کاربران
+// بارگذاری کاربران در پنل
 async function loadUsers() {
     const usersList = document.getElementById('users-list');
     usersList.innerHTML = '<p>در حال بارگذاری کاربران...</p>';
@@ -179,7 +176,7 @@ async function loadOrders() {
         }
         ordersList.innerHTML = invoices.map(order => {
             const status = order.status || '';
-            const badge = (status === 'paid' || status === 'completed') ? 'success' : 'warning';
+            const badgeClass = (status === 'paid' || status === 'completed') ? 'success' : 'warning';
             const user = order.user || {};
             const total = order.totalAmount || order.amount || 0;
             const items = order.items || order.products || [];
@@ -187,7 +184,7 @@ async function loadOrders() {
                 <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>سفارش #${order.id || order._id}</span>
-                        <span class="badge bg-${badge}">${status}</span>
+                        <span class="badge bg-${badgeClass}">${status}</span>
                     </div>
                     <div class="card-body">
                         <h6>کاربر: ${user.firstname || user.name || user.username || ''}</h6>
@@ -211,7 +208,7 @@ async function loadOrders() {
     }
 }
 
-// محاسبه و نمایش گزارش‌ها
+// محاسبه‌ی پرفروش‌ترین محصول و فروش ماهانه
 async function loadReports() {
     const bestContainer = document.getElementById('best-selling-container');
     const monthlyContainer = document.getElementById('monthly-sales-container');
@@ -238,7 +235,7 @@ async function loadReports() {
                 productMap[id].total += price * qty;
             });
         });
-        const best = Object.values(productMap).sort((a,b) => b.quantity - a.quantity)[0];
+        const best = Object.values(productMap).sort((a, b) => b.quantity - a.quantity)[0];
         if (best) {
             const imgPath = best.product.image?.path
                 ? best.product.image.path
@@ -268,7 +265,7 @@ async function loadReports() {
         invoices.forEach(inv => {
             const date = new Date(inv.createDate || inv.createdAt || inv.date);
             if (isNaN(date)) return;
-            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}`;
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
             if (!monthly[key]) monthly[key] = 0;
             monthly[key] += inv.totalAmount || inv.amount || 0;
         });

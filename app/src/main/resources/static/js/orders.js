@@ -12,9 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        // دریافت فاکتورهای کاربر
         const ordersRes = await orderAPI.getUserOrders(token);
-        // داده‌ها ممکن است در فیلد data قرار گرفته باشند
         const orders = ordersRes.data || ordersRes;
 
         if (!Array.isArray(orders) || orders.length === 0) {
@@ -51,6 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// خروج کاربر
 document.getElementById('logout-btn')?.addEventListener('click', () => {
     localStorage.removeItem('token');
     window.location.href = 'index.html';
