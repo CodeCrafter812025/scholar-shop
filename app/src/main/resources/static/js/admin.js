@@ -1,28 +1,25 @@
 import { productAPI, userAPI, orderAPI } from './api.js';
 
-// بارگذاری محصولات در تب محصولات
+// بارگذاری محصولات در پنل ادمین
 async function loadProducts() {
     const productsList = document.getElementById('products-list');
     productsList.innerHTML = '<p>در حال بارگذاری محصولات...</p>';
     try {
-        const products = await productAPI.getAllProducts();
+        const token = localStorage.getItem('token');
+        const products = await productAPI.getAllPanelProducts(0, 100, token);
+        if (!products || products.length === 0) {
+            productsList.innerHTML = '<p>محصولی یافت نشد.</p>';
+            return;
+        }
         productsList.innerHTML = products.map(product => `
             <div class="card mb-3">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-2">
-                            <img src="${product.image?.path || product.image ? `/images/${product.image.name || product.image}` : 'https://via.placeholder.com/100'}"
-                                 class="img-fluid">
-                        </div>
-                        <div class="col-md-8">
-                            <h5>${product.title || product.name}</h5>
-                            <p>${(product.description || '').substring(0, 100)}...</p>
-                            <p><strong>قیمت: ${product.price} تومان</strong></p>
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id || product._id}')">حذف</button>
-                        </div>
+                <!-- محتوای کارت مانند قبل -->
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5>${product.title || product.name}</h5>
+                        <p><strong>قیمت:</strong> ${product.price}</p>
                     </div>
+                    <button class="btn btn-danger" onclick="deleteProduct('${product.id}')">حذف</button>
                 </div>
             </div>
         `).join('');
@@ -31,6 +28,59 @@ async function loadProducts() {
         console.error('loadProducts', error);
     }
 }
+
+
+// افزودن محصول جدید
+document.getElementById('saveProductBtn')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('productName')?.value.trim();
+    const price = document.getElementById('productPrice')?.value.trim();
+    const description = document.getElementById('productDescription')?.value.trim();
+    const image = document.getElementById('productImageUrl')?.value.trim();
+    // اگر به category نیاز است، id آن را نیز تهیه کنید
+    if (!name || !price) {
+        alert('لطفاً نام و قیمت را وارد کنید.');
+        return;
+    }
+    try {
+        const token = localStorage.getItem('token');
+        await productAPI.createProduct({ title: name, price: parseInt(price), description, image }, token);
+        alert('محصول جدید با موفقیت ایجاد شد');
+        // پس از ایجاد، لیست محصولات را دوباره بارگذاری کنید
+        loadProducts();
+        // فرم را پاک کنید یا مودال را ببندید
+    } catch (error) {
+        console.error('createProduct', error);
+        alert('خطا در ایجاد محصول!');
+    }
+});
+
+
+// حذف محصول
+window.deleteProduct = async function(productId) {
+    if (!confirm('آیا از حذف این محصول مطمئن هستید؟')) return;
+    try {
+        const token = localStorage.getItem('token');
+        const res = await productAPI.deleteProduct(productId, token);
+        // اگر سرور true برگرداند حذف موفقیت‌آمیز است
+        if (res.data === true || res === true) {
+            alert('محصول با موفقیت حذف شد');
+            loadProducts();
+        } else {
+            alert('خطا در حذف محصول!');
+        }
+    } catch (error) {
+        console.error('deleteProduct', error);
+        alert('خطا در حذف محصول!');
+    }
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadProducts();
+    await loadUsers();
+    await loadOrders();
+    await loadReports();
+});
 
 // بارگذاری کاربران
 async function loadUsers() {
@@ -180,26 +230,3 @@ async function loadReports() {
     }
 }
 
-// تابع حذف محصول
-window.deleteProduct = async function(productId) {
-    if (!confirm('آیا از حذف این محصول مطمئن هستید؟')) return;
-    try {
-        const token = localStorage.getItem('token');
-        await productAPI.deleteProduct(productId, token);
-        alert('محصول با موفقیت حذف شد');
-        loadProducts();
-    } catch (error) {
-        console.error('deleteProduct', error);
-        alert('خطا در حذف محصول!');
-    }
-};
-
-// بارگذاری همه بخش‌ها پس از آماده شدن DOM
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadProducts();
-    await loadUsers();
-    await loadOrders();
-    await loadReports();
-
-    // می‌توانید رویدادهای دیگری مانند افزودن محصول را نیز در اینجا تنظیم کنید
-});
