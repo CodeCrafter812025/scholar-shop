@@ -13,12 +13,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         const orders = await orderAPI.getUserOrders(token);
-
         if (!orders || orders.length === 0) {
             ordersContainer.innerHTML = '<p>هیچ سفارشی یافت نشد!</p>';
             return;
         }
-
         ordersContainer.innerHTML = orders.map(order => {
             const items = order.items || order.products || [];
             return `
@@ -48,7 +46,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// خروج کاربر
 document.getElementById('logout-btn')?.addEventListener('click', () => {
     localStorage.removeItem('token');
     window.location.href = 'index.html';

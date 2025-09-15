@@ -9,9 +9,9 @@ async function fetchData(endpoint) {
     return await response.json();
 }
 
-// ---------- Product API ----------
+// -------- Product API --------
 const productAPI = {
-    // محصولات عمومی (صفحه اصلی و محصولات)
+    // محصولات عمومی (صفحه اصلی)
     getAllProducts: async (page = 0, size = 20) => {
         const res = await fetchData(`product/search?page=${page}&size=${size}`);
         const items = res.data?.content || res.content || res;
@@ -28,8 +28,14 @@ const productAPI = {
         const data = await response.json();
         return data.data || data;
     },
-    // ایجاد محصول
+    // دریافت یک محصول بر اساس شناسه (برای صفحه جزئیات و سبد خرید)
+    getProductById: async (productId) => {
+        const res = await fetchData(`product/${productId}`);
+        return res.data || res;
+    },
+    // ایجاد محصول جدید (پنل ادمین)
     createProduct: async (productData, token) => {
+        // productData باید شامل title, price, description, image (شیء با path یا id) باشد
         const response = await fetch(`${API_URL}/panel/product/add`, {
             method: 'POST',
             headers: {
@@ -41,7 +47,7 @@ const productAPI = {
         if (!response.ok) throw new Error('Failed to create product');
         return await response.json();
     },
-    // حذف محصول
+    // حذف محصول (پنل ادمین)
     deleteProduct: async (productId, token) => {
         const response = await fetch(`${API_URL}/panel/product/${productId}`, {
             method: 'DELETE',
@@ -54,7 +60,7 @@ const productAPI = {
     }
 };
 
-// ---------- User API ----------
+// -------- User API --------
 const userAPI = {
     login: async (credentials) => {
         const response = await fetch(`${API_URL}/user/login`, {
@@ -76,7 +82,7 @@ const userAPI = {
     }
 };
 
-// ---------- Cart API ----------
+// -------- Cart API --------
 const cartAPI = {
     getCart: () => JSON.parse(localStorage.getItem('cart')) || [],
     addToCart: (product) => {
@@ -104,9 +110,9 @@ const cartAPI = {
     }
 };
 
-// ---------- Order API ----------
+// -------- Order API --------
 const orderAPI = {
-    // دریافت سفارش‌های همه کاربران (برای پنل)
+    // دریافت فاکتورهای همه کاربران برای پنل
     getOrdersByUser: async (userId, token) => {
         const response = await fetch(`${API_URL}/panel/invoice/user/${userId}`, {
             headers: {
@@ -129,7 +135,7 @@ const orderAPI = {
         if (!response.ok) throw new Error('Failed to create order');
         return await response.json();
     },
-    // دریافت سفارش‌های کاربر جاری (برای orders.js)
+    // دریافت فاکتورهای کاربر جاری برای صفحه orders
     getUserOrders: async (token) => {
         const response = await fetch(`${API_URL}/invoice`, {
             headers: {

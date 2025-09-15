@@ -20,13 +20,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('addProductForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // تبدیل نام‌ها به فیلدهای مورد نیاز سرویس
         const raw = Object.fromEntries(new FormData(e.target).entries());
+        // تبدیل ورودی به فیلدهای مورد انتظار DTO
         const productData = {
             title: raw.name,
             description: raw.description,
             price: parseInt(raw.price, 10),
-            image: raw.image || null
+            // تصویر به صورت شیء FileDto شامل path یا id
+            image: raw.image ? { path: raw.image } : null
         };
 
         try {
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// جمع‌آوری همه فاکتورهای کاربران برای پنل
+// جمع‌آوری همه فاکتورهای کاربران (برای پنل)
 async function collectAllInvoices() {
     const token = localStorage.getItem('token');
     const users = await userAPI.getAllUsers(token);
@@ -96,7 +97,7 @@ async function collectAllInvoices() {
     return invoices;
 }
 
-// بارگذاری محصولات (پنل ادمین)
+// بارگذاری محصولات پنل ادمین
 async function loadProducts() {
     const productsList = document.getElementById('products-list');
     productsList.innerHTML = '<p>در حال بارگذاری محصولات...</p>';
@@ -166,7 +167,7 @@ async function loadUsers() {
     }
 }
 
-// بارگذاری سفارش‌های همه کاربران برای پنل
+// بارگذاری سفارش‌های همه کاربران
 async function loadOrders() {
     const ordersList = document.getElementById('orders-list');
     ordersList.innerHTML = '<p>در حال بارگذاری سفارش‌ها...</p>';
@@ -210,7 +211,7 @@ async function loadOrders() {
     }
 }
 
-// محاسبه پرفروش‌ترین محصول و فروش ماهانه
+// محاسبه و نمایش گزارش‌ها
 async function loadReports() {
     const bestContainer = document.getElementById('best-selling-container');
     const monthlyContainer = document.getElementById('monthly-sales-container');
@@ -228,18 +229,18 @@ async function loadReports() {
         invoices.forEach(inv => {
             const items = inv.items || inv.products || [];
             items.forEach(item => {
-                const product = item.product;
-                const id = product.id || product._id;
-                if (!productMap[id]) productMap[id] = { product, quantity: 0, total: 0 };
+                const prod = item.product;
+                const id = prod.id || prod._id;
+                if (!productMap[id]) productMap[id] = { product: prod, quantity: 0, total: 0 };
                 const qty = item.quantity || 1;
-                const price = item.price || product.price || 0;
+                const price = item.price || prod.price || 0;
                 productMap[id].quantity += qty;
                 productMap[id].total += price * qty;
             });
         });
         const best = Object.values(productMap).sort((a,b) => b.quantity - a.quantity)[0];
         if (best) {
-            const imagePath = best.product.image?.path
+            const imgPath = best.product.image?.path
                 ? best.product.image.path
                 : best.product.image?.name
                     ? `/images/${best.product.image.name}`
@@ -250,7 +251,7 @@ async function loadReports() {
             bestContainer.innerHTML = `
                 <div class="card">
                     <div class="card-body d-flex align-items-center">
-                        <img src="${imagePath}" alt="${name}" class="img-thumbnail me-3" style="width:100px;height:auto;">
+                        <img src="${imgPath}" alt="${name}" class="img-thumbnail me-3" style="width:100px;height:auto;">
                         <div>
                             <h5>${name}</h5>
                             <p>تعداد فروش: <strong>${best.quantity}</strong></p>
