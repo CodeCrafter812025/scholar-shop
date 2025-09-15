@@ -10,17 +10,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // بارگذاری بخش‌ها
     await loadProducts();
     await loadUsers();
     await loadOrders();
     await loadReports();
 
-    // رویداد ثبت محصول
+    // فرم افزودن محصول
     document.getElementById('addProductForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const raw = Object.fromEntries(new FormData(e.target).entries());
-        // تبدیل فیلدها به فرمت مورد انتظار
         const productData = {
             title: raw.name,
             description: raw.description,
@@ -39,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // رویداد دانلود گزارش سفارش‌ها
+    // دانلود گزارش سفارش‌ها
     document.getElementById('download-report-btn')?.addEventListener('click', async () => {
         try {
             const invoices = await collectAllInvoices();
@@ -77,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// جمع‌آوری همه فاکتورهای کاربران برای پنل
+// جمع‌آوری همه فاکتورها
 async function collectAllInvoices() {
     const token = localStorage.getItem('token');
     const users = await userAPI.getAllUsers(token);
@@ -94,7 +92,7 @@ async function collectAllInvoices() {
     return invoices;
 }
 
-// بارگذاری محصولات پنل ادمین
+// بارگذاری محصولات
 async function loadProducts() {
     const productsList = document.getElementById('products-list');
     productsList.innerHTML = '<p>در حال بارگذاری محصولات...</p>';
@@ -139,7 +137,7 @@ async function loadProducts() {
     }
 }
 
-// بارگذاری کاربران در پنل
+// بارگذاری کاربران
 async function loadUsers() {
     const usersList = document.getElementById('users-list');
     usersList.innerHTML = '<p>در حال بارگذاری کاربران...</p>';
@@ -164,7 +162,7 @@ async function loadUsers() {
     }
 }
 
-// بارگذاری سفارش‌های همه کاربران
+// بارگذاری سفارش‌ها
 async function loadOrders() {
     const ordersList = document.getElementById('orders-list');
     ordersList.innerHTML = '<p>در حال بارگذاری سفارش‌ها...</p>';
@@ -208,7 +206,7 @@ async function loadOrders() {
     }
 }
 
-// محاسبه‌ی پرفروش‌ترین محصول و فروش ماهانه
+// محاسبه پرفروش‌ترین محصول و فروش ماهانه
 async function loadReports() {
     const bestContainer = document.getElementById('best-selling-container');
     const monthlyContainer = document.getElementById('monthly-sales-container');
@@ -235,7 +233,7 @@ async function loadReports() {
                 productMap[id].total += price * qty;
             });
         });
-        const best = Object.values(productMap).sort((a, b) => b.quantity - a.quantity)[0];
+        const best = Object.values(productMap).sort((a,b) => b.quantity - a.quantity)[0];
         if (best) {
             const imgPath = best.product.image?.path
                 ? best.product.image.path

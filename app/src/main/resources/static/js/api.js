@@ -2,22 +2,19 @@
 
 const API_URL = '/api';
 
-// تابع کمک برای انجام درخواست GET
+// تابع GET
 async function fetchData(endpoint) {
     const response = await fetch(`${API_URL}/${endpoint}`);
     if (!response.ok) throw new Error('Network response was not ok');
     return await response.json();
 }
 
-// -------- Product API --------
 const productAPI = {
-    // دریافت محصولات عمومی
     getAllProducts: async (page = 0, size = 20) => {
         const res = await fetchData(`product/search?page=${page}&size=${size}`);
         const items = res.data?.content || res.content || res;
         return Array.isArray(items) ? items : [];
     },
-    // دریافت محصولات برای پنل ادمین
     getAllPanelProducts: async (page = 0, size = 50, token) => {
         const response = await fetch(`${API_URL}/panel/product?page=${page}&size=${size}`, {
             headers: {
@@ -28,14 +25,11 @@ const productAPI = {
         const data = await response.json();
         return data.data || data;
     },
-    // دریافت محصول بر اساس شناسه
     getProductById: async (id) => {
         const res = await fetchData(`product/${id}`);
         return res.data || res;
     },
-    // ایجاد محصول جدید (پنل ادمین)
     createProduct: async (productData, token) => {
-        // productData باید دارای title, price, description و image (شیء با path یا id) باشد
         const response = await fetch(`${API_URL}/panel/product/add`, {
             method: 'POST',
             headers: {
@@ -47,7 +41,6 @@ const productAPI = {
         if (!response.ok) throw new Error('Failed to create product');
         return await response.json();
     },
-    // حذف محصول (پنل ادمین)
     deleteProduct: async (productId, token) => {
         const response = await fetch(`${API_URL}/panel/product/${productId}`, {
             method: 'DELETE',
@@ -60,7 +53,6 @@ const productAPI = {
     }
 };
 
-// -------- User API --------
 const userAPI = {
     login: async (credentials) => {
         const response = await fetch(`${API_URL}/user/login`, {
@@ -70,7 +62,6 @@ const userAPI = {
         });
         return await response.json();
     },
-    // دریافت همه کاربران برای پنل
     getAllUsers: async (token, page = 0, size = 50) => {
         const response = await fetch(`${API_URL}/panel/user?page=${page}&size=${size}`, {
             headers: {
@@ -83,7 +74,6 @@ const userAPI = {
     }
 };
 
-// -------- Cart API --------
 const cartAPI = {
     getCart: () => JSON.parse(localStorage.getItem('cart')) || [],
     addToCart: (product) => {
@@ -113,9 +103,7 @@ const cartAPI = {
     }
 };
 
-// -------- Order API --------
 const orderAPI = {
-    // دریافت فاکتورهای همه کاربران برای پنل
     getOrdersByUser: async (userId, token) => {
         const response = await fetch(`${API_URL}/panel/invoice/user/${userId}`, {
             headers: {
@@ -125,7 +113,6 @@ const orderAPI = {
         if (!response.ok) throw new Error('Failed to fetch orders for user');
         return await response.json();
     },
-    // ایجاد سفارش توسط کاربر عادی
     createOrder: async (orderData, token) => {
         const response = await fetch(`${API_URL}/invoice`, {
             method: 'POST',
@@ -138,7 +125,6 @@ const orderAPI = {
         if (!response.ok) throw new Error('Failed to create order');
         return await response.json();
     },
-    // دریافت فاکتورهای کاربر جاری (برای صفحه orders.html)
     getUserOrders: async (token) => {
         const response = await fetch(`${API_URL}/invoice`, {
             headers: {

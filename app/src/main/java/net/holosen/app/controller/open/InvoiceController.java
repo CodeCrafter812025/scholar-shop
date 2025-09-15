@@ -15,9 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * کنترلر عمومی برای ایجاد و مشاهده‌ی فاکتورهای کاربر.
- */
 @RestController
 @RequestMapping("/api/invoice")
 public class InvoiceController {
@@ -29,13 +26,6 @@ public class InvoiceController {
         this.invoiceService = invoiceService;
     }
 
-    /**
-     * ایجاد فاکتور جدید بر اساس لیست آیتم‌ها برای کاربر جاری.
-     *
-     * @param request    بدنه‌ی شامل آیتم‌ها
-     * @param httpRequest برای استخراج کاربر جاری از JwtFilter
-     * @return APIResponse با فاکتور ایجاد شده یا خطا
-     */
     @PostMapping
     public APIResponse<InvoiceDto> createInvoice(@RequestBody CreateInvoiceRequest request,
                                                  HttpServletRequest httpRequest) {
@@ -47,8 +37,7 @@ public class InvoiceController {
                         .message("User not authenticated")
                         .build();
             }
-
-            // تبدیل آیتم‌های ورودی به InvoiceItemDto
+            // ساخت آیتم‌ها
             List<InvoiceItemDto> items = request.getItems().stream().map(item ->
                     InvoiceItemDto.builder()
                             .product(ProductDto.builder().id(item.getProductId()).build())
@@ -56,7 +45,6 @@ public class InvoiceController {
                             .build()
             ).toList();
 
-            // ایجاد فاکتور
             InvoiceDto invoice = invoiceService.create(
                     InvoiceDto.builder()
                             .user(LimitedUserDto.builder().id(currentUser.getId()).build())
@@ -75,12 +63,6 @@ public class InvoiceController {
         }
     }
 
-    /**
-     * دریافت لیست فاکتورهای کاربر جاری.
-     *
-     * @param httpRequest برای استخراج کاربر جاری از JwtFilter
-     * @return APIResponse شامل فهرست فاکتورها
-     */
     @GetMapping
     public APIResponse<List<InvoiceDto>> getUserInvoices(HttpServletRequest httpRequest) {
         try {
@@ -91,7 +73,6 @@ public class InvoiceController {
                         .message("User not authenticated")
                         .build();
             }
-
             List<InvoiceDto> invoices = invoiceService.readAllByUserId(currentUser.getId());
             return APIResponse.<List<InvoiceDto>>builder()
                     .status(APIStatus.Success)
@@ -105,33 +86,17 @@ public class InvoiceController {
         }
     }
 
-    /** کلاس داخلی برای ساختار درخواست ایجاد فاکتور */
     public static class CreateInvoiceRequest {
         private List<Item> items;
-
-        public List<Item> getItems() {
-            return items;
-        }
-        public void setItems(List<Item> items) {
-            this.items = items;
-        }
-
+        public List<Item> getItems() { return items; }
+        public void setItems(List<Item> items) { this.items = items; }
         public static class Item {
             private Long productId;
             private Integer quantity;
-
-            public Long getProductId() {
-                return productId;
-            }
-            public void setProductId(Long productId) {
-                this.productId = productId;
-            }
-            public Integer getQuantity() {
-                return quantity;
-            }
-            public void setQuantity(Integer quantity) {
-                this.quantity = quantity;
-            }
+            public Long getProductId() { return productId; }
+            public void setProductId(Long productId) { this.productId = productId; }
+            public Integer getQuantity() { return quantity; }
+            public void setQuantity(Integer quantity) { this.quantity = quantity; }
         }
     }
 }

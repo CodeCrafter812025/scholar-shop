@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCart();
 });
 
-// تابع نمایش سبد خرید
 function renderCart() {
     const cartItemsContainer = document.getElementById('cart-items');
     const cartTotalElement = document.getElementById('cart-total');
@@ -58,7 +57,6 @@ function renderCart() {
     cartTotalElement.textContent = total;
 }
 
-// به‌روزرسانی quantity
 window.updateQuantity = function(productId, change) {
     const cart = cartAPI.getCart();
     const index = cart.findIndex(item => item.id == productId || item._id == productId);
@@ -72,14 +70,12 @@ window.updateQuantity = function(productId, change) {
     }
 };
 
-// حذف آیتم از سبد
 window.removeFromCart = function(productId) {
     const newCart = cartAPI.getCart().filter(item => item.id != productId && item._id != productId);
     localStorage.setItem('cart', JSON.stringify(newCart));
     renderCart();
 };
 
-// ثبت سفارش (تکمیل خرید)
 document.getElementById('checkoutBtn')?.addEventListener('click', async () => {
     const cart = cartAPI.getCart();
     if (cart.length === 0) {
@@ -93,7 +89,6 @@ document.getElementById('checkoutBtn')?.addEventListener('click', async () => {
         return;
     }
     try {
-        // آماده‌سازی داده‌های سفارش
         const items = cart.map(item => ({
             productId: parseInt(item.id, 10),
             quantity: item.quantity
