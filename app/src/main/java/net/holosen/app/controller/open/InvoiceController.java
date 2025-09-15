@@ -71,6 +71,31 @@ public class InvoiceController {
         }
     }
 
+    @GetMapping
+    public APIResponse<List<InvoiceDto>> getUserInvoices(HttpServletRequest httpRequest) {
+        try {
+            UserDto currentUser = (UserDto) httpRequest.getAttribute(JwtFilter.CURRENT_USER);
+            if (currentUser == null) {
+                return APIResponse.<List<InvoiceDto>>builder()
+                        .status(APIStatus.Error)
+                        .message("User not authenticated")
+                        .build();
+            }
+            List<InvoiceDto> invoices = invoiceService.readAllByUserId(currentUser.getId());
+            return APIResponse.<List<InvoiceDto>>builder()
+                    .status(APIStatus.Success)
+                    .data(invoices)
+                    .build();
+        } catch (Exception e) {
+            return APIResponse.<List<InvoiceDto>>builder()
+                    .status(APIStatus.Error)
+                    .message(e.getMessage())
+                    .build();
+        }
+    }
+
+
+
     /** کلاس داخلی برای نگه‌داری درخواست ایجاد فاکتور */
     public static class CreateInvoiceRequest {
         private List<Item> items;

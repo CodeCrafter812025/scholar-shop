@@ -1,3 +1,5 @@
+// app/src/main/resources/static/js/orders.js
+
 import { orderAPI } from './api.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -12,31 +14,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const orders = await orderAPI.getUserOrders(token);
 
-        if (orders.length === 0) {
+        if (!orders || orders.length === 0) {
             ordersContainer.innerHTML = '<p>هیچ سفارشی یافت نشد!</p>';
             return;
         }
 
-        ordersContainer.innerHTML = orders.map(order => `
-            <div class="card mb-3">
-                <div class="card-header d-flex justify-content-between">
-                    <span>سفارش #${order._id}</span>
-                    <span class="badge bg-${order.status === 'completed' ? 'success' : 'warning'}">
-                        ${order.status === 'completed' ? 'تکمیل شده' : 'در حال پردازش'}
-                    </span>
+        ordersContainer.innerHTML = orders.map(order => {
+            const items = order.items || order.products || [];
+            return `
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between">
+                        <span>سفارش #${order.id || order._id}</span>
+                        <span class="badge bg-${(order.status === 'paid' || order.status === 'completed') ? 'success' : 'warning'}">
+                            ${(order.status === 'paid' || order.status === 'completed') ? 'پرداخت شده' : 'در حال پردازش'}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <h5>تاریخ: ${new Date(order.createDate || order.createdAt).toLocaleDateString('fa-IR')}</h5>
+                        <h6>محصولات:</h6>
+                        <ul>
+                            ${items.map(item => `
+                                <li>${item.product?.title || item.product?.name || ''} - تعداد: ${item.quantity || 1} - قیمت: ${item.price || item.product?.price || 0} تومان</li>
+                            `).join('')}
+                        </ul>
+                        <h5 class="text-primary">جمع کل: ${order.totalAmount || order.amount} تومان</h5>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <h5>تاریخ: ${new Date(order.createdAt).toLocaleDateString('fa-IR')}</h5>
-                    <h6>محصولات:</h6>
-                    <ul>
-                        ${order.products.map(item => `
-                            <li>${item.product.name} - تعداد: ${item.quantity} - قیمت: ${item.price} تومان</li>
-                        `).join('')}
-                    </ul>
-                    <h5 class="text-primary">جمع کل: ${order.totalAmount} تومان</h5>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (error) {
         ordersContainer.innerHTML = '<p>خطا در دریافت سفارش‌ها!</p>';
         console.error(error);
