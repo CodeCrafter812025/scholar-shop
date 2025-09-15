@@ -32,13 +32,15 @@ const productAPI = {
         return await response.json();
     },
     deleteProduct: async (productId, token) => {
-        const response = await fetch(`${API_URL}/product/${productId}`, {
+        const response = await fetch(`${API_URL}/panel/product/${productId}`, {
             method: 'DELETE',
             headers: {
                 ...(token && { 'Authorization': `Bearer ${token}` })
             }
         });
-        if (!response.ok) throw new Error('Failed to delete product');
+        if (!response.ok) {
+            throw new Error('Failed to delete product');
+        }
         return await response.json();
     }
 };
