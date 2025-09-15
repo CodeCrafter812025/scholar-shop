@@ -10,7 +10,18 @@ async function fetchData(endpoint) {
 
 
 const productAPI = {
-    // دریافت لیست محصولات برای پنل مدیریتی
+
+    // دریافت لیست محصولات برای کاربران عادی (صفحه اصلی و محصولات)
+    getAllProducts: async (page = 0, size = 20) => {
+        // endpoint عمومی جست‌وجوی محصولات
+        const res = await fetchData(`product/search?page=${page}&size=${size}`);
+        // داده‌ها در فیلد data.content قرار دارند
+        const items = res.data?.content || res.content || res;
+        return Array.isArray(items) ? items : [];
+    },
+
+
+    // دریافت لیست محصولات در پنل ادمین
     getAllPanelProducts: async (page = 0, size = 50, token) => {
         const response = await fetch(`${API_URL}/panel/product?page=${page}&size=${size}`, {
             headers: {
@@ -19,7 +30,7 @@ const productAPI = {
         });
         if (!response.ok) throw new Error('Failed to fetch products');
         const data = await response.json();
-        return data.data || data; // در APIPanelResponse داده‌ها در فیلد data است
+        return data.data || data;
     },
 
     // ایجاد محصول جدید در پنل ادمین
@@ -32,9 +43,7 @@ const productAPI = {
             },
             body: JSON.stringify(productData)
         });
-        if (!response.ok) {
-            throw new Error('Failed to create product');
-        }
+        if (!response.ok) throw new Error('Failed to create product');
         return await response.json();
     },
 
@@ -46,11 +55,10 @@ const productAPI = {
                 ...(token && { 'Authorization': `Bearer ${token}` })
             }
         });
-        if (!response.ok) {
-            throw new Error('Failed to delete product');
-        }
+        if (!response.ok) throw new Error('Failed to delete product');
         return await response.json();
     }
+
 };
 
 // توابع مربوط به کاربران
@@ -64,6 +72,7 @@ const userAPI = {
         });
         return await response.json();
     },
+
     // متد دریافت همه کاربران برای مدیر
     getAllUsers: async (token, page = 0, size = 50) => {
         const response = await fetch(`${API_URL}/panel/user?page=${page}&size=${size}`, {
