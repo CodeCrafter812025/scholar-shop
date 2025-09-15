@@ -109,7 +109,7 @@ const cartAPI = {
 
 // توابع مربوط به فاکتورها/سفارش‌ها
 const orderAPI = {
-    // دریافت فاکتورهای یک کاربر (پنل ادمین)
+    // دریافت فاکتورهای هر کاربر برای پنل ادمین
     getOrdersByUser: async (userId, token) => {
         const response = await fetch(`${API_URL}/panel/invoice/user/${userId}`, {
             headers: {
@@ -121,7 +121,7 @@ const orderAPI = {
     },
     // ایجاد سفارش توسط کاربر عادی
     createOrder: async (orderData, token) => {
-        const response = await fetch(`${API_URL}/orders`, {
+        const response = await fetch(`${API_URL}/invoice`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

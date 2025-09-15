@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // نمایش آیتم‌های سبد
+    // نمایش اقلام سبد خرید
     cartItemsContainer.innerHTML = cart.map(item => {
         const imagePath = item.image?.path
             ? item.image.path
@@ -48,12 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }).join('');
 
-    // جمع کل
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     cartTotalElement.textContent = total;
 });
 
-// به‌روز کردن تعداد کالا
+// کم و زیاد کردن تعداد
 window.updateQuantity = function(productId, change) {
     const cart = cartAPI.getCart();
     const item = cart.find(item => item.id === productId || item._id === productId);
@@ -68,34 +67,32 @@ window.updateQuantity = function(productId, change) {
     }
 };
 
-// حذف آیتم از سبد
+// حذف از سبد
 window.removeFromCart = function(productId) {
     cartAPI.removeFromCart(productId);
     location.reload();
 };
 
-// تکمیل خرید (ثبت سفارش)
+// تکمیل خرید
 document.getElementById('checkoutBtn')?.addEventListener('click', async () => {
     const cart = cartAPI.getCart();
     if (cart.length === 0) {
-        alert('سبد خرید شما خالی است!');
+        alert('سبد خرید خالی است!');
         return;
     }
     const token = localStorage.getItem('token');
     if (!token) {
-        alert('برای ثبت سفارش لطفاً وارد حساب کاربری خود شوید.');
+        alert('برای ثبت سفارش لطفاً وارد شوید.');
         window.location.href = '/auth.html';
         return;
     }
     try {
-        // آماده‌سازی داده‌های سفارش: فیلدهای مورد نیاز ممکن است متفاوت باشند
         const items = cart.map(item => ({
-            productId: item.id,
+            productId: parseInt(item.id), // شناسه عددی محصول
             quantity: item.quantity
         }));
         await orderAPI.createOrder({ items }, token);
         alert('سفارش شما ثبت شد!');
-        // پاک‌سازی سبد و هدایت به صفحه سفارش‌ها یا صفحه اصلی
         localStorage.removeItem('cart');
         window.location.href = '/orders.html';
     } catch (error) {

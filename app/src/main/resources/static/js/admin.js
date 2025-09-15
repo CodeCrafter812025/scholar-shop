@@ -1,6 +1,94 @@
 import { productAPI, userAPI, orderAPI } from './api.js';
 
-// نمایش محصولات پنل ادمین
+// هنگام بارگذاری صفحه پنل ادمین
+document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('لطفاً وارد شوید!');
+        window.location.href = 'auth.html';
+        return;
+    }
+
+    // بارگذاری بخش‌ها
+    await loadProducts();
+    await loadUsers();
+    await loadOrders();
+    await loadReports();
+
+    // ثبت رویداد برای فرم افزودن محصول
+    document.getElementById('addProductForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const productData = Object.fromEntries(formData.entries());
+        try {
+            await productAPI.createProduct(productData, token);
+            alert('محصول جدید با موفقیت افزوده شد');
+            e.target.reset();
+            // بستن مودال
+            bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
+            await loadProducts();
+        } catch (error) {
+            console.error('createProduct', error);
+            alert('خطا در ایجاد محصول!');
+        }
+    });
+
+    // رویداد برای دانلود گزارش سفارش‌ها
+    document.getElementById('download-report-btn')?.addEventListener('click', async () => {
+        try {
+            const allInvoices = await collectAllInvoices();
+            if (!allInvoices.length) {
+                alert('هیچ سفارشی برای گزارش وجود ندارد.');
+                return;
+            }
+            const header = ['OrderID','UserName','Status','Total','Products'];
+            const rows = allInvoices.map(order => {
+                const id = order.id || order._id || '';
+                const userName = order.user?.firstname || order.user?.name || order.user?.username || '';
+                const status = order.status || '';
+                const total = order.totalAmount || order.amount || 0;
+                const products = (order.items || order.products || []).map(item => {
+                    const name = item.product?.title || item.product?.name || '';
+                    const qty = item.quantity || 1;
+                    return `${name} (x${qty})`;
+                }).join('; ');
+                return [id, userName, status, total, products].join(',');
+            });
+            const csvContent = [header.join(','), ...rows].join('\n');
+            const blob = new Blob([csvContent], { type:'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'orders_report.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('report error', error);
+            alert('خطا در دریافت گزارش سفارش‌ها!');
+        }
+    });
+});
+
+// جمع‌آوری همه فاکتورهای کاربران (برای بارگذاری سفارش‌ها و گزارش‌ها)
+async function collectAllInvoices() {
+    const token = localStorage.getItem('token');
+    const users = await userAPI.getAllUsers(token);
+    const invoices = [];
+    for (const user of users) {
+        try {
+            const res = await orderAPI.getOrdersByUser(user.id, token);
+            const orders = res.data || res;
+            orders.forEach(o => invoices.push(o));
+        } catch (error) {
+            console.error('collect invoices', error);
+        }
+    }
+    return invoices;
+}
+
+// بارگذاری محصولات پنل ادمین
 async function loadProducts() {
     const productsList = document.getElementById('products-list');
     productsList.innerHTML = '<p>در حال بارگذاری محصولات...</p>';
@@ -12,7 +100,6 @@ async function loadProducts() {
             return;
         }
         productsList.innerHTML = products.map(product => {
-            // تعیین مسیر تصویر
             const imagePath = product.image?.path
                 ? product.image.path
                 : product.image?.name
@@ -34,53 +121,160 @@ async function loadProducts() {
                             </div>
                         </div>
                         <div class="col-md-2 d-flex flex-column justify-content-center align-items-center">
-                            <button class="btn btn-danger mb-2" onclick="deleteProduct('${product.id || product._id}')">حذف</button>
+                            <button class="btn btn-danger" onclick="deleteProduct('${product.id || product._id}')">حذف</button>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
     } catch (error) {
-        productsList.innerHTML = '<p>خطا در بارگذاری محصولات!</p>';
         console.error('loadProducts', error);
+        productsList.innerHTML = '<p>خطا در بارگذاری محصولات!</p>';
     }
 }
 
-// افزودن محصول جدید
-document.getElementById('saveProductBtn')?.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('productName')?.value.trim();
-    const price = document.getElementById('productPrice')?.value.trim();
-    const description = document.getElementById('productDescription')?.value.trim();
-    const image = document.getElementById('productImageUrl')?.value.trim();
-    if (!name || !price) {
-        alert('لطفاً نام و قیمت را وارد کنید.');
-        return;
-    }
+// بارگذاری کاربران
+async function loadUsers() {
+    const usersList = document.getElementById('users-list');
+    usersList.innerHTML = '<p>در حال بارگذاری کاربران...</p>';
     try {
         const token = localStorage.getItem('token');
-        // توجه: اگر category یا فیلدهای دیگر لازم است، آن‌ها را نیز اضافه کنید
-        await productAPI.createProduct(
-            { title: name, price: parseInt(price), description, image },
-            token
-        );
-        alert('محصول جدید با موفقیت ایجاد شد');
-        // بارگذاری مجدد لیست
-        loadProducts();
-        // پاک‌سازی فرم (اختیاری)
-        document.getElementById('productName').value = '';
-        document.getElementById('productPrice').value = '';
-        document.getElementById('productDescription').value = '';
-        document.getElementById('productImageUrl').value = '';
-        // بستن مودال در صورت استفاده از Bootstrap Modal
-        const modalEl = document.getElementById('addProductModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        modal?.hide();
+        const users = await userAPI.getAllUsers(token);
+        if (!users || users.length === 0) {
+            usersList.innerHTML = '<p>کاربری یافت نشد.</p>';
+            return;
+        }
+        usersList.innerHTML = users.map(user => `
+            <div class="card mb-2">
+                <div class="card-body">
+                    <h5>${user.firstname || user.username || user.email}</h5>
+                    <p><strong>ایمیل:</strong> ${user.email || ''}</p>
+                </div>
+            </div>
+        `).join('');
     } catch (error) {
-        console.error('createProduct', error);
-        alert('خطا در ایجاد محصول!');
+        console.error('loadUsers', error);
+        usersList.innerHTML = '<p>خطا در بارگذاری کاربران!</p>';
     }
-});
+}
+
+// بارگذاری سفارش‌های همه کاربران
+async function loadOrders() {
+    const ordersList = document.getElementById('orders-list');
+    ordersList.innerHTML = '<p>در حال بارگذاری سفارش‌ها...</p>';
+    try {
+        const invoices = await collectAllInvoices();
+        if (!invoices.length) {
+            ordersList.innerHTML = '<p>سفارشی ثبت نشده است.</p>';
+            return;
+        }
+        ordersList.innerHTML = invoices.map(order => {
+            const status = order.status || '';
+            const badge = (status === 'paid' || status === 'completed') ? 'success' : 'warning';
+            const user = order.user || {};
+            const total = order.totalAmount || order.amount || 0;
+            const items = order.items || order.products || [];
+            return `
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>سفارش #${order.id || order._id}</span>
+                        <span class="badge bg-${badge}">${status}</span>
+                    </div>
+                    <div class="card-body">
+                        <h6>کاربر: ${user.firstname || user.name || user.username || ''}</h6>
+                        <h6>محصولات:</h6>
+                        <ul>
+                            ${items.map(item => {
+                                const pName = item.product?.title || item.product?.name || '';
+                                const qty = item.quantity || 1;
+                                const price = item.price || item.product?.price || 0;
+                                return `<li>${pName} - تعداد: ${qty} - قیمت: ${price} تومان</li>`;
+                            }).join('')}
+                        </ul>
+                        <h5 class="text-primary">جمع کل: ${total} تومان</h5>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('loadOrders', error);
+        ordersList.innerHTML = '<p>خطا در بارگذاری سفارش‌ها!</p>';
+    }
+}
+
+// محاسبه و نمایش گزارش‌ها
+async function loadReports() {
+    const bestContainer = document.getElementById('best-selling-container');
+    const monthlyContainer = document.getElementById('monthly-sales-container');
+    bestContainer.innerHTML = '<p>در حال محاسبه گزارش...</p>';
+    monthlyContainer.innerHTML = '<p>در حال محاسبه گزارش...</p>';
+    try {
+        const invoices = await collectAllInvoices();
+        if (!invoices.length) {
+            bestContainer.innerHTML = '<p>سفارشی برای محاسبه وجود ندارد.</p>';
+            monthlyContainer.innerHTML = '<p>سفارشی برای محاسبه وجود ندارد.</p>';
+            return;
+        }
+        // پرفروش‌ترین محصول
+        const productMap = {};
+        invoices.forEach(inv => {
+            const items = inv.items || inv.products || [];
+            items.forEach(item => {
+                const product = item.product;
+                const id = product.id || product._id;
+                if (!productMap[id]) productMap[id] = { product, quantity: 0, total: 0 };
+                const qty = item.quantity || 1;
+                const price = item.price || product.price || 0;
+                productMap[id].quantity += qty;
+                productMap[id].total += price * qty;
+            });
+        });
+        const best = Object.values(productMap).sort((a,b) => b.quantity - a.quantity)[0];
+        if (best) {
+            const imagePath = best.product.image?.path
+                ? best.product.image.path
+                : best.product.image?.name
+                    ? `/images/${best.product.image.name}`
+                    : best.product.image
+                        ? best.product.image
+                        : 'https://via.placeholder.com/100';
+            const name = best.product.title || best.product.name || '';
+            bestContainer.innerHTML = `
+                <div class="card">
+                    <div class="card-body d-flex align-items-center">
+                        <img src="${imagePath}" alt="${name}" class="img-thumbnail me-3" style="width:100px;height:auto;">
+                        <div>
+                            <h5>${name}</h5>
+                            <p>تعداد فروش: <strong>${best.quantity}</strong></p>
+                            <p>مبلغ کل فروش: <strong>${best.total.toLocaleString()}</strong> تومان</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            bestContainer.innerHTML = '<p>پرفروش‌ترین محصول یافت نشد.</p>';
+        }
+        // فروش ماهانه
+        const monthly = {};
+        invoices.forEach(inv => {
+            const date = new Date(inv.createDate || inv.createdAt || inv.date);
+            if (isNaN(date)) return;
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}`;
+            if (!monthly[key]) monthly[key] = 0;
+            monthly[key] += inv.totalAmount || inv.amount || 0;
+        });
+        let tableHtml = '<table class="table table-bordered"><thead><tr><th>ماه</th><th>مبلغ فروش (تومان)</th></tr></thead><tbody>';
+        Object.keys(monthly).sort().forEach(month => {
+            tableHtml += `<tr><td>${month}</td><td>${monthly[month].toLocaleString()}</td></tr>`;
+        });
+        tableHtml += '</tbody></table>';
+        monthlyContainer.innerHTML = tableHtml;
+    } catch (error) {
+        console.error('loadReports', error);
+        bestContainer.innerHTML = '<p>خطا در محاسبه گزارش!</p>';
+        monthlyContainer.innerHTML = '<p>خطا در محاسبه گزارش!</p>';
+    }
+}
 
 // حذف محصول
 window.deleteProduct = async function(productId) {
@@ -93,16 +287,7 @@ window.deleteProduct = async function(productId) {
         console.error('deleteProduct', error);
         alert('خطا در حذف محصول!');
     } finally {
-        // چه موفق و چه ناموفق، لیست را بارگذاری مجدد می‌کنیم
+        // در هر صورت لیست محصولات را به‌روز کن
         loadProducts();
     }
 };
-
-// بارگذاری کاربران، سفارش‌ها و گزارشات مشابه نسخه قبلی...
-
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadProducts();
-    await loadUsers();
-    await loadOrders();
-    await loadReports();
-});
