@@ -12,11 +12,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        const orders = await orderAPI.getUserOrders(token);
-        if (!orders || orders.length === 0) {
+        // دریافت فاکتورهای کاربر
+        const ordersRes = await orderAPI.getUserOrders(token);
+        // داده‌ها ممکن است در فیلد data قرار گرفته باشند
+        const orders = ordersRes.data || ordersRes;
+
+        if (!Array.isArray(orders) || orders.length === 0) {
             ordersContainer.innerHTML = '<p>هیچ سفارشی یافت نشد!</p>';
             return;
         }
+
         ordersContainer.innerHTML = orders.map(order => {
             const items = order.items || order.products || [];
             return `

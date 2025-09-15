@@ -1,6 +1,13 @@
+// app/src/main/resources/static/js/cart.js
+
 import { cartAPI, orderAPI } from './api.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    renderCart();
+});
+
+// تابع نمایش سبد خرید و محاسبه مجموع
+function renderCart() {
     const cartItemsContainer = document.getElementById('cart-items');
     const cartTotalElement = document.getElementById('cart-total');
 
@@ -12,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // نمایش اقلام سبد خرید
     cartItemsContainer.innerHTML = cart.map(item => {
         const imagePath = item.image?.path
             ? item.image.path
@@ -50,30 +56,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     cartTotalElement.textContent = total;
-});
+}
 
-// کم و زیاد کردن تعداد
+// به‌روزرسانی تعداد کالا
 window.updateQuantity = function(productId, change) {
     const cart = cartAPI.getCart();
-    const item = cart.find(item => item.id === productId || item._id === productId);
-    if (item) {
-        item.quantity += change;
-        if (item.quantity <= 0) {
-            cartAPI.removeFromCart(productId);
-        } else {
-            localStorage.setItem('cart', JSON.stringify(cart));
+    const index = cart.findIndex(item => item.id == productId || item._id == productId);
+    if (index > -1) {
+        cart[index].quantity += change;
+        if (cart[index].quantity <= 0) {
+            cart.splice(index, 1);
         }
-        location.reload();
+        localStorage.setItem('cart', JSON.stringify(cart));
+        renderCart(); // به‌روزرسانی نمایش
     }
 };
 
-// حذف از سبد
+// حذف کالا از سبد
 window.removeFromCart = function(productId) {
-    cartAPI.removeFromCart(productId);
-    location.reload();
+    const cart = cartAPI.getCart().filter(item => item.id != productId && item._id != productId);
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
 };
 
-// تکمیل خرید
+// ثبت سفارش (تکمیل خرید)
 document.getElementById('checkoutBtn')?.addEventListener('click', async () => {
     const cart = cartAPI.getCart();
     if (cart.length === 0) {
@@ -87,8 +93,9 @@ document.getElementById('checkoutBtn')?.addEventListener('click', async () => {
         return;
     }
     try {
+        // تبدیل اقلام سبد به فرمت مورد نیاز API
         const items = cart.map(item => ({
-            productId: parseInt(item.id), // شناسه عددی محصول
+            productId: parseInt(item.id, 10),
             quantity: item.quantity
         }));
         await orderAPI.createOrder({ items }, token);
