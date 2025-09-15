@@ -1,4 +1,4 @@
-import { cartAPI } from './api.js';
+import { cartAPI, orderAPI } from './api.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const cartItemsContainer = document.getElementById('cart-items');
@@ -12,14 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // نمایش محصولات سبد خرید
+    // نمایش آیتم‌های سبد
     cartItemsContainer.innerHTML = cart.map(item => {
         const imagePath = item.image?.path
             ? item.image.path
             : item.image
                 ? `/images/${item.image}`
                 : 'https://via.placeholder.com/100';
-
         const title = item.title || item.name || '';
         return `
             <div class="row mb-3 align-items-center">
@@ -49,16 +48,15 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }).join('');
 
-    // محاسبه جمع کل
+    // جمع کل
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     cartTotalElement.textContent = total;
 });
 
-// افزایش یا کاهش تعداد
+// به‌روز کردن تعداد کالا
 window.updateQuantity = function(productId, change) {
     const cart = cartAPI.getCart();
     const item = cart.find(item => item.id === productId || item._id === productId);
-
     if (item) {
         item.quantity += change;
         if (item.quantity <= 0) {
@@ -66,12 +64,42 @@ window.updateQuantity = function(productId, change) {
         } else {
             localStorage.setItem('cart', JSON.stringify(cart));
         }
-        location.reload(); // بارگذاری مجدد صفحه
+        location.reload();
     }
 };
 
-// حذف محصول از سبد
+// حذف آیتم از سبد
 window.removeFromCart = function(productId) {
     cartAPI.removeFromCart(productId);
     location.reload();
 };
+
+// تکمیل خرید (ثبت سفارش)
+document.getElementById('checkoutBtn')?.addEventListener('click', async () => {
+    const cart = cartAPI.getCart();
+    if (cart.length === 0) {
+        alert('سبد خرید شما خالی است!');
+        return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('برای ثبت سفارش لطفاً وارد حساب کاربری خود شوید.');
+        window.location.href = '/auth.html';
+        return;
+    }
+    try {
+        // آماده‌سازی داده‌های سفارش: فیلدهای مورد نیاز ممکن است متفاوت باشند
+        const items = cart.map(item => ({
+            productId: item.id,
+            quantity: item.quantity
+        }));
+        await orderAPI.createOrder({ items }, token);
+        alert('سفارش شما ثبت شد!');
+        // پاک‌سازی سبد و هدایت به صفحه سفارش‌ها یا صفحه اصلی
+        localStorage.removeItem('cart');
+        window.location.href = '/orders.html';
+    } catch (error) {
+        console.error('Checkout error:', error);
+        alert('خطا در ثبت سفارش!');
+    }
+});
