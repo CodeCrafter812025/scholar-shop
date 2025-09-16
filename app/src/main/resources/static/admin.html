@@ -12,6 +12,9 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="/">Scholar Shop</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item"><a class="nav-link" href="/">خانه</a></li>
@@ -19,7 +22,7 @@
                 <li class="nav-item">
                     <a class="nav-link position-relative" href="/cart.html">
                         <i class="fas fa-shopping-cart cart-icon"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+                        <span id="cart-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-count">0</span>
                     </a>
                 </li>
                 <li class="nav-item"><a class="nav-link" href="/auth.html">ورود/ثبت‌نام</a></li>
@@ -27,6 +30,7 @@
         </div>
     </div>
 </nav>
+
 
 <div class="container mt-4">
     <h1>پنل مدیریت</h1>
@@ -108,28 +112,30 @@
             </div>
             <div class="modal-body">
                 <form id="addProductForm">
-                    <div class="mb-3">
-                        <label class="form-label">نام محصول</label>
-                        <input type="text" class="form-control" name="name" required>
+                    <div class="mb-2">
+                        <label class="form-label">عنوان</label>
+                        <input id="prodTitle" class="form-control" required>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-2">
+                        <label class="form-label">قیمت (تومان)</label>
+                        <input id="prodPrice" type="number" min="0" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">شناسهٔ دسته‌بندی</label>
+                        <input id="prodCategoryId" type="number" min="1" class="form-control" placeholder="مثال: 1" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">شناسهٔ تصویر (اختیاری)</label>
+                        <input id="prodImageId" class="form-control" placeholder="مثال: 10">
+                        <div class="form-text">اگر خالی بماند، تصویر پیش‌فرض نمایش داده می‌شود.</div>
+                    </div>
+                    <div class="mb-2">
                         <label class="form-label">توضیحات</label>
-                        <textarea class="form-control" name="description" required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">قیمت</label>
-                        <input type="number" class="form-control" name="price" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">دسته‌بندی</label>
-                        <input type="text" class="form-control" name="category" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">تصویر (URL)</label>
-                        <input type="url" class="form-control" name="image">
+                        <textarea id="prodDesc" rows="3" class="form-control"></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary">ذخیره</button>
                 </form>
+
             </div>
         </div>
     </div>

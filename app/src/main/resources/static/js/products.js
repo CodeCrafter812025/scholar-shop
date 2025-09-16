@@ -1,60 +1,54 @@
-import { productAPI, cartAPI } from './api.js';
+// products.js
+import { productAPI, cartAPI, updateCartBadge } from './api.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const productsContainer = document.getElementById('products-container');
-
-    // دریافت محصولات (page=0 و size=100)
-    const products = await productAPI.getAllProducts(0, 100);
-
-    // نمایش محصولات
-    productsContainer.innerHTML = products.map(product => {
-        // دریافت مسیر تصویر: ابتدا از image.path استفاده می‌کنیم، در غیر این صورت از نام فایل و پوشه images
-        const imagePath = product.image?.path
-            ? product.image.path
-            : product.image
-                ? `/images/${product.image}`
-                : 'https://via.placeholder.com/300';
-
-        const title = product.title || product.name || '';
-        const desc = product.description || '';
-        const id = product.id || product._id;
-        return `
-            <div class="col-md-4 mb-4">
-                <div class="card">
-                    <img src="${imagePath}" class="card-img-top" alt="${title}">
-                    <div class="card-body">
-                        <h5 class="card-title">${title}</h5>
-                        <p class="card-text">${desc.substring(0, 100)}...</p>
-                        <p class="card-text"><strong>قیمت: ${product.price} تومان</strong></p>
-                        <button class="btn btn-primary" onclick="addToCart('${id}')">افزودن به سبد خرید</button>
-                        <a href="/product-detail.html?id=${id}" class="btn btn-outline-primary">جزئیات</a>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
+document.addEventListener('DOMContentLoaded', () => {
+  updateCartBadge();
+  loadProductsPage();
 });
 
-// تابع افزودن به سبد خرید
-window.addToCart = async function(productId) {
-    try {
-        const product = await productAPI.getProductById(productId);
-        cartAPI.addToCart(product);
-        alert('محصول به سبد خرید اضافه شد!');
-        updateCartIcon();
-    } catch (error) {
-        console.error('Error adding to cart:', error);
-        alert('خطا در افزودن محصول به سبد خرید!');
-    }
-};
+async function loadProductsPage() {
+  const container = document.getElementById('products-container') || document.querySelector('#products .row');
+  if (!container) return;
 
-// به‌روزرسانی نمایش تعداد سبد
-function updateCartIcon() {
-    const cart = cartAPI.getCart();
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const cartIcon = document.querySelector('.cart-icon');
-    if (cartIcon) {
-        const badge = cartIcon.nextElementSibling;
-        if (badge) badge.textContent = totalItems;
+  try {
+    const res = await productAPI.getAll(0, 100);
+    const list = res?.data?.content ?? res?.content ?? res?.data ?? res;
+    const products = Array.isArray(list) ? list : [];
+
+    if (!products.length) {
+      container.innerHTML = '<p class="text-muted">محصولی یافت نشد.</p>';
+      return;
     }
+
+    container.innerHTML = products.map(cardTemplate).join('');
+  } catch (e) {
+    console.error('Error loading products:', e);
+    container.innerHTML = '<p class="text-danger">خطا در بارگذاری محصولات!</p>';
+  }
 }
+
+function cardTemplate(p) {
+  const img = p?.image?.path || 'images/tshirt1.webp';
+  const price = (p?.price ?? 0).toLocaleString('fa-IR');
+  return `
+    <div class="col-md-3 mb-3">
+      <div class="card h-100">
+        <img src="${img}" class="card-img-top" alt="${p?.title || ''}" onerror="this.src='images/tshirt1.webp'">
+        <div class="card-body d-flex flex-column">
+          <h6 class="card-title">${p?.title || '-'}</h6>
+          <div class="mt-auto d-flex justify-content-between align-items-center">
+            <span class="fw-bold">${price}</span>
+            <button class="btn btn-sm btn-outline-primary"
+              onclick="addToCart(${p.id}, '${(p?.title||'').replace(/'/g,'\\\'')}', ${Number(p?.price||0)})">افزودن</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.addToCart = function(id, title, price) {
+  cartAPI.add({ id, title, price: Number(price||0) }, 1);
+  updateCartBadge();
+  alert('به سبد اضافه شد.');
+};

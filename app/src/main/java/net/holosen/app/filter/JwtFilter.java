@@ -1,20 +1,24 @@
 package net.holosen.app.filter;
 
-import jakarta.servlet.*;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.SneakyThrows;
+import net.holosen.dto.user.UserDto;
 import net.holosen.service.user.UserService;
 import net.holosen.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Set;
 
 @Component
-public class JwtFilter implements Filter {
+public class JwtFilter extends OncePerRequestFilter {
 
     public static final String CURRENT_USER = "CURRENT_USER";
+
     private final UserService userService;
     private final JwtUtil jwtUtil;
 
@@ -24,28 +28,57 @@ public class JwtFilter implements Filter {
         this.jwtUtil = jwtUtil;
     }
 
+    // مسیرهای آزاد «دقیق»
+    private static final Set<String> OPEN_EXACT = Set.of(
+            "/api/user/login",
+            "/api/user/register",
+            "/index.html",
+            "/auth.html",
+            "/admin.html",
+            "/orders.html"
+    );
+
+    // مسیرهای آزاد بر اساس پیشوند (استاتیک‌ها)
+    private static final Set<String> OPEN_PREFIXES = Set.of(
+            "/css/", "/js/", "/images/", "/assets/"
+    );
+
     @Override
-    @SneakyThrows
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
-        HttpServletResponse httpResponse = (HttpServletResponse) response;
-        String token = extractTokenFromHeader(httpRequest);
-        if (!token.isEmpty() && jwtUtil.validateToken(token)) {
-            String username = jwtUtil.getUsernameFromJWT(token);
-            httpRequest.setAttribute(CURRENT_USER, userService.readUserByUsername(username));
-            chain.doFilter(request, response);
-        } else {
-            httpResponse.getWriter().write("Access Denied!");
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (OPEN_EXACT.contains(path)) return true;
+        for (String p : OPEN_PREFIXES) {
+            if (path.startsWith(p)) return true;
         }
+        return false;  // بقیهٔ /api/* باید فیلتر شوند
     }
 
-    private static String extractTokenFromHeader(HttpServletRequest httpRequest) {
-        String bearerToken = httpRequest.getHeader("Authorization");
-        String prefix = "Bearer ";
-        String token = "";
-        if (bearerToken != null && bearerToken.startsWith(prefix)) {
-            token = bearerToken.substring(prefix.length());
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain)
+            throws ServletException, IOException {
+
+        String auth = request.getHeader("Authorization");
+        // 💡 لاگ موقت برای اطمینان از اجرای فیلتر — بعد از تست حذفش کن
+        System.out.println("[JwtFilter] path=" + request.getRequestURI()
+                + " hasAuth=" + (auth != null));
+
+        if (auth != null && auth.startsWith("Bearer ")) {
+            String token = auth.substring(7);
+            try {
+                if (jwtUtil.validateToken(token)) {
+                    String username = jwtUtil.getUsernameFromJWT(token);
+                    UserDto user = userService.readUserByUsername(username);
+                    if (user != null) {
+                        request.setAttribute(CURRENT_USER, user);
+                    }
+                }
+            } catch (Exception ignored) {
+                // توکن نامعتبر/منقضی: کاری نکن؛ کنترلر پیام استاندارد می‌دهد
+            }
         }
-        return token;
+
+        chain.doFilter(request, response);
     }
 }

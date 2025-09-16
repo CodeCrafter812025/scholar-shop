@@ -41,36 +41,35 @@ public class InvoiceService implements CreateService<InvoiceDto> , HasValidation
     @Override
     public InvoiceDto create(InvoiceDto dto) throws NotFoundException, ValidationException {
         checkValidation(dto);
-
-        // تبدیل DTO به موجودیت Invoice
+        // تبدیل DTO به موجودیت
         Invoice invoice = mapper.map(dto, Invoice.class);
         invoice.setCreateDate(LocalDateTime.now());
         invoice.setPayedDate(null);
         invoice.setStatus(OrderStatus.InProgress);
 
-        long totalAmount = 0L;
-
-        // ذخیره موقت فاکتور برای ایجاد id (در صورت استفاده از JPA می‌توان آن را به تأخیر انداخت)
+        // ذخیره اولیه فاکتور برای ایجاد id
         Invoice savedInvoice = repository.save(invoice);
 
+        long totalAmount = 0L;
         if (invoice.getItems() != null && !invoice.getItems().isEmpty()) {
             for (InvoiceItem ii : invoice.getItems()) {
-                // خواندن محصول و محاسبه قیمت
+                // خواندن قیمت محصول
                 ProductDto product = productService.read(ii.getProduct().getId());
                 ii.setPrice(product.getPrice());
-                ii.setInvoice(savedInvoice);     // اتصال آیتم به فاکتور
+                ii.setInvoice(savedInvoice); // اتصال آیتم به فاکتور
                 totalAmount += product.getPrice() * ii.getQuantity();
             }
-            // ذخیره همه آیتم‌ها
-            itemRepository.saveAll(invoice.getItems());
+            itemRepository.saveAll(invoice.getItems()); // ذخیره همه آیتم‌ها
         }
 
-        // بروز رسانی جمع کل و ذخیره نهایی فاکتور
         savedInvoice.setTotalAmount(totalAmount);
         savedInvoice = repository.save(savedInvoice);
 
         return mapper.map(savedInvoice, InvoiceDto.class);
     }
+
+
+
     public List<InvoiceDto> readAllByUserId(Long userId){
         return repository.findAllByUser_id(userId).stream().map(x -> mapper.map(x , InvoiceDto.class)).toList();
     }
