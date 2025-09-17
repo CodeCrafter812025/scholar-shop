@@ -75,3 +75,33 @@ body {
         margin-top: 10px;
     }
 }
+
+/* جدول رنگین‌کمانی ملایم گزارش */
+.rainbow-table tbody tr {
+  transition: background-color .2s ease, filter .2s ease;
+}
+.rainbow-table tbody tr:hover {
+  /* کمی تیره‌تر روی هاور برای خوانایی بهتر */
+  filter: saturate(1.1) brightness(0.98);
+}
+.rainbow-table .top-row {
+  font-weight: 900;          /* بولدتر برای ردیف اول */
+  text-shadow: 0 0 0.5px rgba(0,0,0,.25);
+}
+.rainbow-table thead th {
+  white-space: nowrap;
+}
+
+/* جدول رنگین‌کمانی */
+.rainbow-table td {
+  transition: background-color .2s ease, filter .2s ease;
+}
+.rainbow-table tbody tr:hover td {
+  filter: saturate(1.05) brightness(.98);
+}
+/* سطر اول پررنگ‌تر */
+.rainbow-table .top-cell {
+  font-weight: 700;
+  text-shadow: 0 0 .3px rgba(0,0,0,.3);
+}
+

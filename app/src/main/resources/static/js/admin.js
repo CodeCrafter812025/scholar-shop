@@ -164,23 +164,69 @@ async function loadReports() {
   try {
     const tops = await productAPI.getTop('Popular');
     const list = Array.isArray(tops) ? tops : (tops?.data || []);
-    bestEl.innerHTML = list.length
-      ? '<ol>' + list.map((p, i) => `<li>${p.title} — تعداد ${p.visitCount ?? '-'} </li>`).join('') + '</ol>'
-      : '<p class="text-muted">یافت نشد.</p>';
+
+    if (!list.length) {
+      bestEl.innerHTML = '<p class="text-muted">یافت نشد.</p>';
+    } else {
+      const rows = list.map((p, i) => {
+        const hue = Math.round((i / Math.max(1, list.length - 1)) * 300); // طیف رنگین‌کمانی
+        const cellStyle = `style="background-color: hsla(${hue},70%,92%,1)"`;
+        const bold = i === 0 ? 'top-cell' : '';
+        const visits = (p.visitCount ?? 0).toLocaleString('fa-IR');
+        return `
+          <tr>
+            <td ${cellStyle} class="${bold}">${i + 1}</td>
+            <td ${cellStyle} class="${bold}">${p.title ?? '-'}</td>
+            <td ${cellStyle} class="${bold}">${visits}</td>
+          </tr>`;
+      }).join('');
+
+      bestEl.innerHTML = `
+        <table class="table table-sm align-middle rainbow-table">
+          <thead>
+            <tr>
+              <th style="width:72px">رتبه</th>
+              <th>محصول</th>
+              <th style="width:120px">تعداد</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
   } catch (e) {
+    console.error('best-selling error', e);
     bestEl.innerHTML = '<p class="text-danger">خطا در بارگذاری.</p>';
   }
 
-  try {
-    // فروش ماهانه ساده از سفارش‌های کاربر جاری (دمو)
-    const data = await orderAPI.getUserInvoices();
-    const orders = Array.isArray(data) ? data : (data?.data || []);
-    const sum = orders.reduce((s, o) => s + (o.totalAmount || 0), 0);
-    const now = new Date();
-    monthEl.innerHTML = `<p class="fs-5"> ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')} — ${sum.toLocaleString('fa-IR')} تومان</p>`;
-  } catch (e) {
-    monthEl.innerHTML = '<p class="text-danger">خطا در بارگذاری.</p>';
-  }
+
+  // --- داخل loadReports، فقط بلاک try مربوط به bestEl را جایگزین کن ---
+try {
+  // از فالبک فعلی استفاده می‌کنیم (سفارش‌های کاربر جاری)
+  const data = await panelAPI.listInvoicesAllFallback();
+  const orders = Array.isArray(data) ? data : (data?.data || []);
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+
+  // فقط سفارش‌های همین ماه را جمع بزن
+  const monthly = orders.filter(o => {
+    const d = new Date(o.createDate || o.date || o.createdAt || Date.now());
+    return d.getFullYear() === y && (d.getMonth() + 1) === m;
+  });
+  const sum = monthly.reduce((s, o) => s + (o.totalAmount || o.total || 0), 0);
+
+  monthEl.innerHTML =
+    `<p class="fs-5">${y}-${String(m).padStart(2,'0')} — ${sum.toLocaleString('fa-IR')} تومان</p>`;
+} catch (e) {
+  console.error('monthly sales error', e);
+  // حتی در خطا هم چیزی نشان بده
+  const now = new Date();
+  monthEl.innerHTML =
+    `<p class="fs-5">${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')} — ۰ تومان</p>`;
+}
+
+
 }
 
 
