@@ -1,183 +1,156 @@
 // static/js/api.js
-const BASE = '';
-const JSONH = { 'Content-Type': 'application/json;charset=utf-8' };
+const API_BASE = ''; // همان origin فعلی (https://127.0.0.1)
 
-export const token = {
-  get: () => localStorage.getItem('token') || '',
-  set: (t) => localStorage.setItem('token', t || ''),
-  clear: () => localStorage.removeItem('token'),
-};
-
-export const ui = {
-  toast(msg) {
-    try {
-      const el = document.getElementById('liveToast');
-      if (!el) { alert(msg); return; }
-      el.querySelector('.toast-body').textContent = msg;
-      new bootstrap.Toast(el).show();
-    } catch { alert(msg); }
-  },
-  updateCartBadge() {
-    const count = cart.count();
-    const sels = [
-      'a[href="/cart.html"] .badge',
-      'a[href="cart.html"] .badge',
-      '.navbar .cart-icon + .badge',
-      '.cart-icon ~ .badge'
-    ];
-    const seen = new Set();
-    for (const s of sels) {
-      document.querySelectorAll(s).forEach(el => {
-        if (!seen.has(el)) { el.textContent = String(count); seen.add(el); }
-      });
-    }
-  }
-};
-
-async function http(path, { method='GET', body, headers={} } = {}) {
-  const t = token.get();
-  const res = await fetch(`${BASE}${path}`, {
+async function http(method, url, { body, headers } = {}) {
+  const res = await fetch(API_BASE + url, {
     method,
     headers: {
-      ...(body ? JSONH : {}),
-      ...(t ? { Authorization: `Bearer ${t}` } : {}),
-      ...headers,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(headers || {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) {
-    const txt = await res.text().catch(()=> '');
-    const err = new Error(`HTTP ${res.status}`);
-    err.status = res.status;
-    err.body = txt;
-    throw err;
-  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
   const ct = res.headers.get('content-type') || '';
-  return ct.includes('application/json') ? res.json() : res.text();
+  if (!ct.includes('application/json')) return null;
+
+  const json = await res.json(); // بک‌اند: {status, message, data}
+  return json?.data ?? json;
 }
 
-/* ------------------ Public APIs ------------------ */
-export const productAPI = {
-  async getAllProducts(page=0, size=30, q) {
-    const r = await http(`/api/product/search?page=${page}&size=${size}${q ? `&q=${encodeURIComponent(q)}` : ''}`);
-    const pageObj = r?.data ?? r;
-    const arr = Array.isArray(pageObj) ? pageObj : (pageObj?.content ?? []);
-    return arr;
-  },
-  async getProductById(id) {
-    const r = await http(`/api/product/${id}`);
-    return r?.data ?? r;
+/** ---- auth helper ---- */
+export const auth = {
+  getToken() { return localStorage.getItem('token') || ''; },
+  setToken(t) { localStorage.setItem('token', t || ''); },
+  clear() { localStorage.removeItem('token'); },
+  bearer() { const t = this.getToken(); return t ? `Bearer ${t}` : ''; },
+  headers(json = true) {
+    const h = {};
+    if (json) h['Content-Type'] = 'application/json';
+    const b = this.bearer();
+    if (b) h['Authorization'] = b;
+    return h;
   },
 };
 
+/** ---- UI helpers ---- */
+export const ui = {
+  toast(msg) {
+    try {
+      const toastEl = document.getElementById('liveToast');
+      const body = toastEl?.querySelector('.toast-body');
+      if (body) body.textContent = msg;
+      if (toastEl) new bootstrap.Toast(toastEl).show();
+    } catch { alert(msg); }
+  },
+  setCartBadge(n) {
+    const el = document.querySelector('.cart-icon + .badge');
+    if (el) el.textContent = String(n ?? 0);
+  },
+};
+
+/** ---- Public Product APIs ---- */
+export const productAPI = {
+  async getAllProducts(page = 0, size = 12, q = '') {
+    const qs = new URLSearchParams({ page, size, ...(q ? { q } : {}) }).toString();
+    const data = await http('GET', `/api/product/search?${qs}`);
+    // اگر Page بود -> content
+    if (data && typeof data === 'object' && 'content' in data && Array.isArray(data.content)) {
+      return data.content;
+    }
+    // در غیر این صورت اگر آرایه بود همان را برگردان
+    if (Array.isArray(data)) return data;
+    // هیچ
+    return [];
+  },
+  getTop(type = 'Popular') {
+    return http('GET', `/api/product/top/${type}`);
+  },
+  getById(id) {
+    return http('GET', `/api/product/${id}`);
+  },
+};
+
+/** ---- Cart (localStorage) ---- */
+const CART_KEY = 'cart';
+function readCart() { try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; } }
+function writeCart(items) { localStorage.setItem(CART_KEY, JSON.stringify(items || [])); }
+
+export const cartAPI = {
+  get() { return readCart(); },
+  add(product, qty = 1) {
+    const cart = readCart();
+    const i = cart.findIndex(x => x.id === product.id);
+    if (i >= 0) cart[i].qty += qty;
+    else cart.push({ id: product.id, title: product.title, price: product.price, image: product.image, qty });
+    writeCart(cart);
+    return cart;
+  },
+  setQty(id, qty) {
+    const cart = readCart().map(x => x.id === id ? { ...x, qty } : x).filter(x => x.qty > 0);
+    writeCart(cart);
+    return cart;
+  },
+  remove(id) {
+    writeCart(readCart().filter(x => x.id !== id));
+    return readCart();
+  },
+  clear() { writeCart([]); },
+  count() { return readCart().reduce((s, x) => s + (x.qty || 0), 0); },
+  total() { return readCart().reduce((s, x) => s + (x.price || 0) * (x.qty || 0), 0); },
+};
+
+// برای سازگاری قدیمی
+export { cartAPI as cart };
+
+/** ---- Orders (user) ---- */
+export const orderAPI = {
+  createInvoice(body) {
+    return http('POST', '/api/invoice', { body, headers: auth.headers() });
+  },
+  getUserInvoices() {
+    return http('GET', '/api/invoice', { headers: auth.headers(false) });
+  },
+};
+
+/** ---- User (login) ---- */
 export const userAPI = {
   async login(username, password) {
-    const tryOne = async (cands) => {
-      let last;
-      for (const c of cands) {
-        try { return await http(c.url, c); }
-        catch (e) { last = e; if (e.status === 401) throw e; }
-      }
-      throw last || new Error('login failed');
-    };
-    const r = await tryOne([
-      { url:'/api/user/login', method:'POST', body:{ username, password } },
-      { url:'/api/users/login', method:'POST', body:{ username, password } },
-      { url:'/api/login',      method:'POST', body:{ username, password } },
-    ]);
-    const tok = r?.data?.token || r?.token;
-    if (!tok) throw new Error('No token returned');
-    token.set(tok);
-    return r;
-  }
-};
-
-/* سبد خرید روی LocalStorage */
-export const cart = {
-  key: 'cart',
-  read() { try { return JSON.parse(localStorage.getItem(this.key)||'[]'); } catch { return []; } },
-  write(v){ localStorage.setItem(this.key, JSON.stringify(v)); },
-  add(p){ const a=this.read(); const i=a.find(x=>x.productId===p.productId); if(i) i.quantity+=p.quantity||1; else a.push({...p,quantity:p.quantity||1}); this.write(a); ui.updateCartBadge(); },
-  setQty(id,q){ const all=this.read(); const i=all.find(x=>x.productId===id); const rest=all.filter(x=>x.productId!==id); if(q>0 && i){ this.write([...rest,{...i,quantity:q}]); } else { this.write(rest); } ui.updateCartBadge(); },
-  remove(id){ this.write(this.read().filter(x=>x.productId!==id)); ui.updateCartBadge(); },
-  clear(){ this.write([]); ui.updateCartBadge(); },
-  count(){ return this.read().reduce((s,x)=>s+(x.quantity||0),0); },
-  total(){ return this.read().reduce((s,x)=>s+(x.quantity||0)*(x.price||0),0); },
-};
-
-export const orderAPI = {
-  async createOrder(items) {
-    return http('/api/invoice', { method:'POST', body:{ items } });
+    const out = await http('POST', '/api/user/login', {
+      body: { username, password },
+      headers: { 'Content-Type': 'application/json' },
+    });
+    // پاسخ login شما شبیه {id, username, token} است
+    const token = out?.token || out?.data?.token || null;
+    if (token) auth.setToken(token);
+    return out;
   },
-  async getUserOrders() {
-    const r = await http('/api/invoice', { method:'GET' });
-    return r?.data ?? [];
-  }
+  logout() { auth.clear(); },
 };
 
-/* ------------------ Admin ------------------ */
-export const panelProductAPI = {
-  async list() { return productAPI.getAllProducts(0, 100); },
-
-  async create({ title, price, categoryId, imageId, description }) {
-    // اعتبارسنجی سمت کلاینت برای جلوگیری از خطای DB
-    if (!title || price == null || isNaN(price)) throw new Error('title/price required');
-    if (!imageId) throw new Error('imageId is required (Product.image nullable=false)');
-    if (!description) throw new Error('description is required (not null)');
-
-    const nested = {
-      title, price: Number(price),
-      description,
-      enable: true, exist: true,
-      category: categoryId ? { id: Number(categoryId) } : null,
-      image:    { id: Number(imageId) }  // اجباری
-    };
-
-    const tryOne = async (cands) => {
-      let last;
-      for (const c of cands) {
-        try { return await http(c.url, c); } catch (e) { last = e; }
-      }
-      throw last || new Error('create failed');
-    };
-
-    return tryOne([
-      { url:'/api/panel/product/add', method:'POST', body:nested },
-      { url:'/api/panel/product',     method:'PUT',  body:nested },
-      { url:'/api/panel/product',     method:'POST', body:nested },
-    ]);
+/** ---- Admin Panel APIs ---- */
+export const panelAPI = {
+  listProducts(page = 0, size = 20) {
+    const qs = new URLSearchParams({ page, size }).toString();
+    return http('GET', `/api/panel/product?${qs}`, { headers: auth.headers(false) });
+  },
+  createProduct(dto) {
+    return http('POST', '/api/panel/product', { body: dto, headers: auth.headers() });
+  },
+  updateProduct(dto) {
+    return http('PUT', '/api/panel/product', { body: dto, headers: auth.headers() });
+  },
+  deleteProduct(id) {
+    return http('DELETE', `/api/panel/product/${id}`, { headers: auth.headers(false) });
   },
 
-    async remove(id) {
-      id = Number(id);
+  listUsers(page = 0, size = 50) {
+    const qs = new URLSearchParams({ page, size }).toString();
+    return http('GET', `/api/panel/user?${qs}`, { headers: auth.headers(false) });
+  },
 
-      // اول حذف نرم صریح
-      try {
-        return await http(`/api/panel/product/disable/${id}`, { method: 'PATCH' });
-      } catch (_) { /* fallback */ }
-
-      // سپس حذف سخت با چند مسیر رایج + fallback
-      const tries = [
-        { url: `/api/panel/product/${id}`, method: 'DELETE' },
-        { url: `/api/panel/product/delete/${id}`, method: 'POST' },
-        { url: `/api/panel/product/delete?id=${id}`, method: 'POST' },
-        { url: '/api/panel/product/delete', method: 'POST', body: { id } },
-      ];
-      let last;
-      for (const t of tries) {
-        try { return await http(t.url, t); } catch (e) { last = e; }
-      }
-      throw last || new Error('delete failed');
-    },
-};
-
-export const panelReportAPI = {
-  async listInvoicesAll() {
-    try {
-      const r = await http('/api/invoice', { method:'GET' });
-      return r?.data ?? [];
-    } catch {
-      return [];
-    }
-  }
+  listInvoicesAllFallback() {
+    return orderAPI.getUserInvoices();
+  },
 };

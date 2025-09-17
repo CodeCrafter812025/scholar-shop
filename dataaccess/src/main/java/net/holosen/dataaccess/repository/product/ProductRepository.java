@@ -23,7 +23,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("""
             from Product where enable = true
             and exist = true
-            order by visitCount desc
+            order by addDate desc
             limit 6
             """)
     List<Product> find6NewestProducts();
@@ -31,7 +31,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("""
             from Product where enable = true
             and exist = true
-            order by visitCount desc
+            order by price asc
             limit 6
             """)
     List<Product> find6CheapestProducts();
@@ -39,7 +39,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("""
             from Product where enable = true
             and exist = true
-            order by visitCount desc
+            order by price desc
             limit 6
             """)
     List<Product> find6ExpensiveProducts();
@@ -48,4 +48,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findByTitleContainingIgnoreCase(String title, Pageable pageable);
 
+    // برای پنل: فقط محصولات فعال/موجود
+    Page<Product> findByEnableTrueAndExistTrue(Pageable pageable);
 }

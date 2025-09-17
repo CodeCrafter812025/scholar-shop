@@ -1,9 +1,6 @@
 package net.holosen.app.controller.panel.product;
 
 import net.holosen.app.anotation.CheckPermission;
-import net.holosen.app.controller.base.CreateController;
-import net.holosen.app.controller.base.ReadController;
-import net.holosen.app.controller.base.UpdateController;
 import net.holosen.app.model.APIPanelResponse;
 import net.holosen.app.model.APIResponse;
 import net.holosen.app.model.enums.APIStatus;
@@ -11,29 +8,42 @@ import net.holosen.dto.product.ProductCategoryDto;
 import net.holosen.service.product.ProductCategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/panel/product/category")
-public class ProductCategoryPanelController implements
-        CreateController<ProductCategoryDto>,
-        ReadController<ProductCategoryDto>,
-        UpdateController<ProductCategoryDto> {
+public class ProductCategoryPanelController {
 
     private final ProductCategoryService service;
 
     @Autowired
-    public ProductCategoryPanelController(ProductCategoryService navService) {
-        this.service = navService;
+    public ProductCategoryPanelController(ProductCategoryService service) {
+        this.service = service;
     }
 
+    @GetMapping
+    @CheckPermission("list_product_category")
+    public APIPanelResponse<List<ProductCategoryDto>> getAll(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        if (page == null) page = 0;
+        if (size == null) size = 20;
+        Page<ProductCategoryDto> data = service.readAll(page, size);
+        return APIPanelResponse.<List<ProductCategoryDto>>builder()
+                .status(APIStatus.Success)
+                .data(data.getContent())
+                .totalCount(data.getTotalElements())
+                .totalPages(data.getTotalPages())
+                .message("")
+                .build();
+    }
 
-    @Override
+    @PostMapping
     @CheckPermission("add_product_category")
-    public APIResponse<ProductCategoryDto> add(ProductCategoryDto dto) throws Exception {
+    public APIResponse<ProductCategoryDto> add(@RequestBody ProductCategoryDto dto) throws Exception {
         return APIResponse.<ProductCategoryDto>builder()
                 .status(APIStatus.Success)
                 .data(service.create(dto))
@@ -41,22 +51,9 @@ public class ProductCategoryPanelController implements
                 .build();
     }
 
-    @Override
-    @CheckPermission("list_product_category")
-    public APIPanelResponse<List<ProductCategoryDto>> getAll(Integer page, Integer productCategory) {
-        Page<ProductCategoryDto> data = service.readAll(page, productCategory);
-        return APIPanelResponse.<List<ProductCategoryDto>>builder()
-                .message("")
-                .status(APIStatus.Success)
-                .data(data.getContent())
-                .totalCount(data.getTotalElements())
-                .totalPages(data.getTotalPages())
-                .build();
-    }
-
-    @Override
+    @PutMapping
     @CheckPermission("edit_product_category")
-    public APIResponse<ProductCategoryDto> edit(ProductCategoryDto dto) throws Exception {
+    public APIResponse<ProductCategoryDto> edit(@RequestBody ProductCategoryDto dto) throws Exception {
         return APIResponse.<ProductCategoryDto>builder()
                 .status(APIStatus.Success)
                 .data(service.update(dto))

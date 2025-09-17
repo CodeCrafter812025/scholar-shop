@@ -1,200 +1,212 @@
 // static/js/admin.js
-import { panelProductAPI, panelReportAPI, ui } from './api.js';
+import { auth, ui, panelAPI, productAPI, orderAPI } from './api.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadProducts();
-  loadOrders();
-  loadReports();
+document.addEventListener('DOMContentLoaded', async () => {
+  // اگر لاگین نیست:
+  if (!auth.getToken()) {
+    ui.toast('برای ورود به پنل مدیریت باید وارد شوید.');
+    // می‌تونی ریدایرکت کنی:
+    // location.href = '/auth.html';
+  }
 
+  await loadProducts();
+  await loadOrders();
+  await loadReports();
+  await loadUsers();
+
+
+  // ایجاد محصول
   document.getElementById('addProductForm')?.addEventListener('submit', onCreate);
+  // دانلود گزارش سفارش‌ها (CSV سمت کلاینت)
   document.getElementById('download-report-btn')?.addEventListener('click', downloadOrdersCsv);
-
-  // تلاش برای تب کاربران (اگر endpointی جواب داد، لیست می‌سازیم)
-  loadUsers();
 });
 
-/* ------------------ Products ------------------ */
 async function loadProducts() {
   const host = document.getElementById('products-list');
-  host.innerHTML = '<p class="text-muted">در حال بارگذاری…</p>';
+  if (!host) return;
+  host.innerHTML = '<p class="text-muted">در حال بارگذاری محصولات…</p>';
   try {
-    const list = await panelProductAPI.list();
-    if (!Array.isArray(list) || list.length === 0) {
+    const res = await panelAPI.listProducts(0, 50);
+    const items = Array.isArray(res?.data) ? res.data : (res || []);
+    if (!items.length) {
       host.innerHTML = '<p class="text-muted">محصولی یافت نشد.</p>';
       return;
     }
-    host.innerHTML = list.map(p => card(p)).join('');
-    // expose delete globally
-    window.deleteProduct = async (id) => {
-      try {
-        await panelProductAPI.remove(id);
-        ui.toast('محصول حذف شد.');
-        loadProducts();
-      } catch (e) {
-        console.error('deleteProduct error:', e);
-        ui.toast('خطا در حذف محصول!');
-      }
-    };
-  } catch (e) {
-    console.error(e);
-    host.innerHTML = '<p class="text-danger">خطا در دریافت محصولات.</p>';
-  }
-}
-
-function card(p) {
-  const img = p?.image?.path ? `/${p.image.path}` :
-    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="100%" height="100%" fill="%23eee"/></svg>';
-  const price = (p.price || 0).toLocaleString('fa-IR');
-  return `
-    <div class="card mb-2">
-      <div class="row g-0 align-items-center">
-        <div class="col-auto"><img src="${img}" width="110" height="80" class="rounded-start" alt=""></div>
-        <div class="col">
-          <div class="card-body py-2">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <div class="fw-bold">${p.title}</div>
-                <div class="text-muted small">${price} تومان</div>
-              </div>
-              <div>
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${p.id})">حذف</button>
-              </div>
-            </div>
+    host.innerHTML = items.map(p => `
+      <div class="card mb-2">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fw-bold">${p.title}</div>
+            <div class="text-muted">${(p.price ?? 0).toLocaleString('fa-IR')} تومان</div>
+          </div>
+          <div>
+            <button class="btn btn-sm btn-outline-danger" data-id="${p.id}" data-action="delete">حذف</button>
           </div>
         </div>
       </div>
-    </div>`;
+    `).join('');
+
+    host.querySelectorAll('button[data-action="delete"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = Number(btn.dataset.id);
+        if (!confirm('حذف این محصول؟')) return;
+        try {
+          await panelAPI.deleteProduct(id);
+          ui.toast('حذف شد.');
+          await loadProducts();
+        } catch (e) {
+          console.error('deleteProduct error', e);
+          ui.toast('حذف انجام نشد (احتمالاً به‌صورت نرم غیرفعال شد یا مجوز ندارید).');
+          await loadProducts();
+        }
+      });
+    });
+  } catch (e) {
+    console.error('loadProducts error', e);
+    host.innerHTML = '<p class="text-danger">عدم دسترسی یا خطای سرور.</p>';
+  }
 }
 
 async function onCreate(e) {
   e.preventDefault();
-  const title = document.getElementById('prodTitle')?.value?.trim();
-  const price = Number(document.getElementById('prodPrice')?.value || 0);
-  const categoryId = document.getElementById('prodCategoryId')?.value?.trim();
-  const imageId = document.getElementById('prodImageId')?.value?.trim();
-  const description = document.getElementById('prodDesc')?.value?.trim();
+  const title = document.getElementById('prodTitle').value.trim();
+  const price = Number(document.getElementById('prodPrice').value);
+  const categoryId = Number(document.getElementById('prodCategoryId').value);
+  const imageId = document.getElementById('prodImageId').value ? Number(document.getElementById('prodImageId').value) : 10; // پیش‌فرض نمونه
+  const desc = document.getElementById('prodDesc').value ?? '';
 
-  if (!title || !price || !imageId || !description) {
-    ui.toast('عنوان، قیمت، تصویر و توضیحات الزامی است.');
+  if (!title || !price || !categoryId) {
+    ui.toast('عنوان، قیمت و شناسه دسته‌بندی الزامی است.');
     return;
   }
 
+  const dto = {
+    title,
+    price,
+    description: desc,
+    category: { id: categoryId },
+    image: { id: imageId },
+    enable: true,
+    exist: true,
+  };
+
   try {
-    await panelProductAPI.create({ title, price, categoryId, imageId, description });
-    ui.toast('محصول ثبت شد.');
-    const modalEl = document.getElementById('addProductModal');
-    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    await panelAPI.createProduct(dto);
+    ui.toast('محصول ایجاد شد.');
     e.target.reset();
-    loadProducts();
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
+    modal?.hide();
+    await loadProducts();
   } catch (err) {
     console.error('createProduct error', err);
-    ui.toast('خطا در ثبت محصول! (imageId/description را بررسی کنید)');
+    ui.toast('ایجاد محصول انجام نشد. شناسهٔ تصویر/دسته‌بندی باید معتبر باشد.');
   }
 }
 
-
-/* ------------------ Orders (Admin view – از /api/invoice) ------------------ */
 async function loadOrders() {
   const host = document.getElementById('orders-list');
   if (!host) return;
   host.innerHTML = '<p class="text-muted">در حال بارگذاری سفارش‌ها…</p>';
   try {
-    const invoices = await panelReportAPI.listInvoicesAll(); // از /api/invoice
-    if (!Array.isArray(invoices) || invoices.length === 0) {
+    // اگر API ادمین همه سفارش‌ها ندارید، از سفارش‌های کاربر جاری استفاده می‌کنیم
+    const data = await orderAPI.getUserInvoices();
+    const orders = Array.isArray(data) ? data : (data?.data || []);
+    if (!orders?.length) {
       host.innerHTML = '<p class="text-muted">سفارشی یافت نشد.</p>';
       return;
     }
-    host.innerHTML = invoices.map(invCard).join('');
+    host.innerHTML = orders.map(o => `
+      <div class="card mb-2">
+        <div class="card-header d-flex justify-content-between">
+          <span>سفارش #${o.id}</span>
+          <span class="badge ${o.status === 'paid' ? 'bg-success' : 'bg-warning'}">${o.status || 'InProgress'}</span>
+        </div>
+        <div class="card-body">
+          <div>تاریخ: ${new Date(o.createDate).toLocaleDateString('fa-IR')}</div>
+          <div>جمع کل: ${(o.totalAmount ?? 0).toLocaleString('fa-IR')} تومان</div>
+        </div>
+      </div>
+    `).join('');
   } catch (e) {
-    console.error(e);
-    host.innerHTML = '<p class="text-danger">خطا در دریافت سفارش‌ها.</p>';
+    console.error('loadOrders error', e);
+    host.innerHTML = '<p class="text-danger">عدم دسترسی یا خطای سرور.</p>';
   }
 }
 
-function invCard(o) {
-  const d = (o.createDate ? new Date(o.createDate) : new Date());
-  const total = (o.totalAmount||0).toLocaleString('fa-IR');
-  const items = Array.isArray(o.items) ? o.items : [];
-  return `
-    <div class="card mb-3">
-      <div class="card-header d-flex justify-content-between">
-        <span>سفارش #${o.id}</span>
-        <span class="badge bg-${o.status==='InProgress' ? 'warning' : 'success'}">${o.status||''}</span>
-      </div>
-      <div class="card-body">
-        <div class="mb-2">تاریخ: ${d.toLocaleDateString('fa-IR')}</div>
-        <ul class="mb-2">
-          ${items.map(i => `<li>${i.product?.title || ''} × ${i.quantity} — ${ (i.price||0).toLocaleString('fa-IR') } تومان</li>`).join('')}
-        </ul>
-        <div class="fw-bold">جمع کل: ${total} تومان</div>
-      </div>
-    </div>`;
-}
-
-/* ------------------ Reports (Best sellers & monthly) ------------------ */
-async function loadReports() {
-  const bestHost = document.getElementById('best-selling-container');
-  const monthHost = document.getElementById('monthly-sales-container');
-  if (bestHost) bestHost.textContent = 'در حال بارگذاری...';
-  if (monthHost) monthHost.textContent = 'در حال بارگذاری...';
-
-  try {
-    const invoices = await panelReportAPI.listInvoicesAll();
-    // Best sellers
-    const map = new Map();
-    invoices.forEach(inv => (inv.items||[]).forEach(it => {
-      const name = it.product?.title || `#${it.product?.id||''}`;
-      map.set(name, (map.get(name)||0) + (it.quantity||0));
-    }));
-    const top = [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
-    if (bestHost) {
-      bestHost.innerHTML = top.length
-        ? `<ol class="mb-0">${top.map(([n,c])=>`<li class="mb-1">${c} تعداد — ${n}</li>`).join('')}</ol>`
-        : '<p class="text-muted mb-0">داده‌ای نیست.</p>';
-    }
-
-    // Monthly
-    const monthMap = new Map();
-    invoices.forEach(inv => {
-      const d = inv.createDate ? new Date(inv.createDate) : null;
-      if (!d) return;
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      monthMap.set(key, (monthMap.get(key)||0) + (inv.totalAmount||0));
-    });
-    const months = [...monthMap.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-    if (monthHost) {
-      monthHost.innerHTML = months.length
-        ? months.map(([m,sum])=>`<div>${m.replace('-',' / ')} — ${sum.toLocaleString('fa-IR')} تومان</div>`).join('')
-        : '<p class="text-muted mb-0">داده‌ای نیست.</p>';
-    }
-  } catch (e) {
-    console.error('reports', e);
-    if (bestHost) bestHost.innerHTML = '<p class="text-danger">API گزارش سمت سرور در دسترس نیست.</p>';
-    if (monthHost) monthHost.innerHTML = '<p class="text-danger">API گزارش سمت سرور در دسترس نیست.</p>';
-  }
-}
-
-/* ------------------ Download CSV ------------------ */
 async function downloadOrdersCsv() {
   try {
-    const invoices = await panelReportAPI.listInvoicesAll();
-    if (!invoices.length) { ui.toast('سفارشی برای گزارش وجود ندارد.'); return; }
-    const rows = [['id','createDate','status','totalAmount','itemsCount']];
-    invoices.forEach(o => rows.push([
-      o.id,
-      o.createDate || '',
-      o.status || '',
-      o.totalAmount || 0,
-      Array.isArray(o.items) ? o.items.length : 0
-    ]));
-    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\r\n');
-    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const data = await orderAPI.getUserInvoices();
+    const orders = Array.isArray(data) ? data : (data?.data || []);
+    if (!orders?.length) { ui.toast('سفارشی برای دانلود وجود ندارد.'); return; }
+
+    const rows = [
+      ['id','date','status','total'],
+      ...orders.map(o => [o.id, o.createDate, o.status, o.totalAmount]),
+    ];
+    const csv = rows.map(r => r.map(x => `"${(x ?? '').toString().replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `orders-report-${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
+    a.download = 'orders.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
   } catch (e) {
-    console.error(e);
-    ui.toast('خطا در تولید گزارش');
+    console.error('downloadOrdersCsv error', e);
+    ui.toast('دانلود گزارش انجام نشد.');
   }
 }
+
+async function loadReports() {
+  const bestEl = document.getElementById('best-selling-container');
+  const monthEl = document.getElementById('monthly-sales-container');
+  if (bestEl) bestEl.innerHTML = '<p>در حال بارگذاری…</p>';
+  if (monthEl) monthEl.innerHTML = '<p>در حال بارگذاری…</p>';
+  try {
+    const tops = await productAPI.getTop('Popular');
+    const list = Array.isArray(tops) ? tops : (tops?.data || []);
+    bestEl.innerHTML = list.length
+      ? '<ol>' + list.map((p, i) => `<li>${p.title} — تعداد ${p.visitCount ?? '-'} </li>`).join('') + '</ol>'
+      : '<p class="text-muted">یافت نشد.</p>';
+  } catch (e) {
+    bestEl.innerHTML = '<p class="text-danger">خطا در بارگذاری.</p>';
+  }
+
+  try {
+    // فروش ماهانه ساده از سفارش‌های کاربر جاری (دمو)
+    const data = await orderAPI.getUserInvoices();
+    const orders = Array.isArray(data) ? data : (data?.data || []);
+    const sum = orders.reduce((s, o) => s + (o.totalAmount || 0), 0);
+    const now = new Date();
+    monthEl.innerHTML = `<p class="fs-5"> ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')} — ${sum.toLocaleString('fa-IR')} تومان</p>`;
+  } catch (e) {
+    monthEl.innerHTML = '<p class="text-danger">خطا در بارگذاری.</p>';
+  }
+}
+
+
+async function loadUsers() {
+  const host = document.getElementById('users-list');
+  if (!host) return;
+  host.innerHTML = '<p class="text-muted">در حال بارگذاری کاربران…</p>';
+  try {
+    const res = await panelAPI.listUsers(0, 50);
+    const items = Array.isArray(res?.data) ? res.data : (res || []);
+    if (!items.length) {
+      host.innerHTML = '<p class="text-muted">کاربری یافت نشد.</p>';
+      return;
+    }
+    host.innerHTML = items.map(u => `
+      <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+        <div>
+          <div class="fw-bold">${u.username ?? '-'}</div>
+          <div class="text-muted">${u.email ?? ''}</div>
+        </div>
+        <span class="badge bg-secondary">#${u.id}</span>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('loadUsers error', e);
+    host.innerHTML = '<p class="text-danger">عدم دسترسی یا خطای سرور.</p>';
+  }
+}
+
