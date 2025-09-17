@@ -2,7 +2,6 @@ package net.holosen.app.controller.panel.user;
 
 import jakarta.servlet.http.HttpServletRequest;
 import net.holosen.app.anotation.CheckPermission;
-import net.holosen.app.controller.base.CRUDController;
 import net.holosen.app.filter.JwtFilter;
 import net.holosen.app.model.APIPanelResponse;
 import net.holosen.app.model.APIResponse;
@@ -13,14 +12,13 @@ import net.holosen.dto.user.UserDto;
 import net.holosen.service.user.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/panel/user")
-public class UserPanelController implements CRUDController<UserDto> {
+public class UserPanelController {
 
     private final UserService service;
 
@@ -29,18 +27,39 @@ public class UserPanelController implements CRUDController<UserDto> {
         this.service = service;
     }
 
-    @GetMapping("{id}")
-    @CheckPermission("info_user")
-    public APIResponse<UserDto> getById(Long id , HttpServletRequest request){
-        return APIResponse.<UserDto>builder()
-                .data(service.readById(id))
+    // لیست کاربران
+    @GetMapping
+    @CheckPermission("list_user")
+    public APIPanelResponse<List<UserDto>> getAll(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        if (page == null) page = 0;
+        if (size == null) size = 20;
+        Page<UserDto> data = service.readAll(page, size);
+        return APIPanelResponse.<List<UserDto>>builder()
                 .status(APIStatus.Success)
+                .data(data.getContent())
+                .totalCount(data.getTotalElements())
+                .totalPages(data.getTotalPages())
+                .message("")
                 .build();
     }
 
-    @Override
+    // جزئیات کاربر
+    @GetMapping("{id}")
+    @CheckPermission("info_user")
+    public APIResponse<UserDto> getById(@PathVariable Long id) {
+        return APIResponse.<UserDto>builder()
+                .status(APIStatus.Success)
+                .data(service.readById(id))
+                .build();
+    }
+
+    // ایجاد کاربر
+    @PostMapping
     @CheckPermission("add_user")
-    public APIResponse<UserDto> add(UserDto dto) throws Exception {
+    public APIResponse<UserDto> add(@RequestBody UserDto dto) throws Exception {
         return APIResponse.<UserDto>builder()
                 .status(APIStatus.Success)
                 .data(service.create(dto))
@@ -48,32 +67,10 @@ public class UserPanelController implements CRUDController<UserDto> {
                 .build();
     }
 
-    @Override
-    @CheckPermission("delete_user")
-    public APIResponse<Boolean> delete(Long id) {
-        return APIResponse.<Boolean>builder()
-                .status(APIStatus.Success)
-                .data(service.delete(id))
-                .message("")
-                .build();
-    }
-
-    @Override
-    @CheckPermission("list_user")
-    public APIPanelResponse<List<UserDto>> getAll(Integer page, Integer size) {
-        Page<UserDto> data = service.readAll(page, size);
-        return APIPanelResponse.<List<UserDto>>builder()
-                .message("")
-                .status(APIStatus.Success)
-                .data(data.getContent())
-                .totalCount(data.getTotalElements())
-                .totalPages(data.getTotalPages())
-                .build();
-    }
-
-    @Override
+    // ویرایش کاربر
+    @PutMapping
     @CheckPermission("edit_user")
-    public APIResponse<UserDto> edit(UserDto dto) throws Exception {
+    public APIResponse<UserDto> edit(@RequestBody UserDto dto) throws Exception {
         return APIResponse.<UserDto>builder()
                 .status(APIStatus.Success)
                 .data(service.update(dto))
@@ -81,10 +78,21 @@ public class UserPanelController implements CRUDController<UserDto> {
                 .build();
     }
 
+    // حذف کاربر
+    @DeleteMapping("{id}")
+    @CheckPermission("delete_user")
+    public APIResponse<Boolean> delete(@PathVariable Long id) {
+        return APIResponse.<Boolean>builder()
+                .status(APIStatus.Success)
+                .data(service.delete(id))
+                .message("")
+                .build();
+    }
 
+    // تغییر رمز توسط ادمین
     @PutMapping("change-pass/admin")
     @CheckPermission("change_password_by_admin")
-    public APIResponse<UserDto> changePasswordByAdmin(UserDto dto) throws Exception {
+    public APIResponse<UserDto> changePasswordByAdmin(@RequestBody UserDto dto) throws Exception {
         return APIResponse.<UserDto>builder()
                 .status(APIStatus.Success)
                 .data(service.changePasswordByAdmin(dto))
@@ -92,21 +100,24 @@ public class UserPanelController implements CRUDController<UserDto> {
                 .build();
     }
 
+    // تغییر رمز توسط خود کاربر
     @PutMapping("change-pass")
     @CheckPermission("change_password_by_user")
-    public APIResponse<UserDto> changePassword(ChangePassDto dto , HttpServletRequest request) throws Exception {
+    public APIResponse<UserDto> changePassword(@RequestBody ChangePassDto dto,
+                                               HttpServletRequest request) throws Exception {
         UserDto user = (UserDto) request.getAttribute(JwtFilter.CURRENT_USER);
         return APIResponse.<UserDto>builder()
                 .status(APIStatus.Success)
-                .data(service.changePasswordByUser(dto , user))
+                .data(service.changePasswordByUser(dto, user))
                 .message("")
                 .build();
     }
 
-
+    // ویرایش پروفایل خود کاربر
     @PutMapping("update-profile")
     @CheckPermission("edit_my_user")
-    public APIResponse<UserDto> editProfile(@RequestBody UpdateProfileDto dto , HttpServletRequest request) throws Exception {
+    public APIResponse<UserDto> editProfile(@RequestBody UpdateProfileDto dto,
+                                            HttpServletRequest request) throws Exception {
         UserDto user = (UserDto) request.getAttribute(JwtFilter.CURRENT_USER);
         dto.setId(user.getId());
         return APIResponse.<UserDto>builder()

@@ -1,77 +1,63 @@
-// cart.js
-import { cartAPI, orderAPI, updateCartBadge } from './api.js';
+// static/js/cart.js
+import { cart, ui, orderAPI, token } from './api.js';
+
+const NOIMG = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="100%" height="100%" fill="%23ddd"/><text x="50%" y="55%" font-size="10" text-anchor="middle" fill="%23666">No image</text></svg>';
 
 document.addEventListener('DOMContentLoaded', () => {
-  updateCartBadge();
   renderCart();
+  ui.updateCartBadge();
 });
 
-function fmt(n) { return Number(n || 0).toLocaleString('fa-IR'); }
-
-function renderCart() {
-  const listEl = document.getElementById('cart-items');
-  const totalEl = document.getElementById('cart-total');
-  if (!listEl || !totalEl) return;
-
-  const cart = cartAPI.getCart();
-  if (!Array.isArray(cart) || cart.length === 0) {
-    listEl.innerHTML = '<p class="text-muted">سبد خرید شما خالی است.</p>';
-    totalEl.textContent = '۰';
-    return;
-  }
-
-  listEl.innerHTML = cart.map(it => rowTemplate(it)).join('');
-  const total = cart.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
-  totalEl.textContent = fmt(total);
-}
-
-function rowTemplate(it) {
-  const itemTotal = Number(it.price) * Number(it.quantity);
+function row(i) {
+  const imgSrc = i.img ? `/${i.img}` : NOIMG;
+  const price = (i.price || 0).toLocaleString('fa-IR');
   return `
-    <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2">
-      <div class="me-2">${it.title || '-'}</div>
-      <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-sm btn-outline-secondary" onclick="decQty(${it.id})">−</button>
-        <span id="qty-${it.id}" class="mx-1">${it.quantity}</span>
-        <button class="btn btn-sm btn-outline-secondary" onclick="incQty(${it.id})">+</button>
+    <div class="d-flex align-items-center border rounded p-2 mb-2">
+      <img src="${imgSrc}" class="me-3" width="80" height="80" alt="">
+      <div class="flex-grow-1">
+        <div class="fw-bold">${i.title || 'محصول'}</div>
+        <div class="text-muted small">${price} تومان</div>
       </div>
-      <div class="min-w-100 text-end">${fmt(it.price)} × ${fmt(it.quantity)} = <b>${fmt(itemTotal)}</b></div>
-      <button class="btn btn-sm btn-outline-danger" onclick="removeItem(${it.id})">حذف</button>
+      <div class="d-flex align-items-center">
+        <button class="btn btn-outline-secondary btn-sm" onclick="decr(${i.productId})">−</button>
+        <span class="px-3">${i.quantity}</span>
+        <button class="btn btn-outline-secondary btn-sm" onclick="incr(${i.productId})">+</button>
+        <button class="btn btn-outline-danger btn-sm ms-2" onclick="removeItem(${i.productId})">حذف</button>
+      </div>
     </div>
   `;
 }
 
-window.incQty = function(id) {
-  const current = cartAPI.getCart().find(x => x.id === id)?.quantity || 1;
-  cartAPI.updateQty(id, current + 1);
-  updateCartBadge(); renderCart();
-};
-window.decQty = function(id) {
-  const current = cartAPI.getCart().find(x => x.id === id)?.quantity || 1;
-  cartAPI.updateQty(id, Math.max(1, current - 1));
-  updateCartBadge(); renderCart();
-};
-window.removeItem = function(id) {
-  cartAPI.removeItem(id);
-  updateCartBadge(); renderCart();
-};
+export async function renderCart() {
+  const host = document.getElementById('cart-items');
+  const totalEl = document.getElementById('cart-total');
+  const items = cart.read();
 
-document.getElementById('checkoutBtn')?.addEventListener('click', async (e) => {
-  e.preventDefault();
-  const token = localStorage.getItem('token');
-  if (!token) { alert('لطفاً ابتدا وارد شوید.'); location.href = 'auth.html'; return; }
+  if (!items.length) {
+    host.innerHTML = '<p class="text-muted">سبد شما خالی است.</p>';
+    totalEl.textContent = '0';
+    return;
+  }
 
-  const cart = cartAPI.getCart();
-  if (!cart.length) { alert('سبد خرید خالی است.'); return; }
+  host.innerHTML = items.map(row).join('');
+  totalEl.textContent = cart.total().toLocaleString('fa-IR');
+}
 
+window.incr = (id) => { const it = cart.read().find(x=>x.productId===id); cart.setQty(id, (it?.quantity||0)+1); renderCart(); };
+window.decr = (id) => { const it = cart.read().find(x=>x.productId===id); const q = (it?.quantity||0)-1; cart.setQty(id, q); renderCart(); };
+window.removeItem = (id) => { cart.remove(id); renderCart(); };
+
+document.getElementById('checkoutBtn')?.addEventListener('click', async () => {
+  if (!token.get()) { ui.toast('لطفاً ابتدا وارد شوید.'); location.href = '/auth.html'; return; }
+  const items = cart.read().map(x => ({ productId: x.productId, quantity: x.quantity || 1 }));
+  if (!items.length) { ui.toast('سبد خرید خالی است.'); return; }
   try {
-    const items = cart.map(it => ({ productId: it.id, quantity: it.quantity }));
     await orderAPI.createOrder(items);
-    alert('سفارش شما ثبت شد!');
-    cartAPI.setCart([]); updateCartBadge(); renderCart();
-    location.href = 'orders.html';
-  } catch (err) {
-    console.error('Checkout error:', err);
-    alert('خطا در ثبت سفارش: ' + (err.message || ''));
+    ui.toast('سفارش شما ثبت شد!');
+    cart.clear();
+    renderCart();
+  } catch (e) {
+    console.error(e);
+    ui.toast('خطا در ثبت سفارش');
   }
 });

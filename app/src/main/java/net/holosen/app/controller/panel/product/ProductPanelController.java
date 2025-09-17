@@ -12,6 +12,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -36,14 +39,46 @@ public class ProductPanelController implements CRUDController<ProductDto> {
                 .build();
     }
 
+    // حذف سخت با fallback به حذف نرم (همان متد قبلی)
     @Override
     @CheckPermission("delete_data")
-    public APIResponse<Boolean> delete(Long id) {
-        return APIResponse.<Boolean>builder()
-                .status(APIStatus.Success)
-                .data(service.delete(id))
-                .message("")
-                .build();
+    @DeleteMapping("{id}")
+    public APIResponse<Boolean> delete(@PathVariable Long id) {
+        try {
+            Boolean ok = service.delete(id);
+            return APIResponse.<Boolean>builder()
+                    .status(APIStatus.Success)
+                    .data(ok)
+                    .message(ok ? "" : "Soft delete failed")
+                    .build();
+        } catch (Exception e) {
+            return APIResponse.<Boolean>builder()
+                    .status(APIStatus.Error)
+                    .data(false)
+                    .message(e.getMessage())
+                    .build();
+        }
+    }
+
+
+    // حذف نرم صریح
+    @CheckPermission("delete_data")
+    @PatchMapping("disable/{id}")
+    public APIResponse<Boolean> disable(@PathVariable Long id) {
+        try {
+            Boolean ok = service.softDelete(id);
+            return APIResponse.<Boolean>builder()
+                    .status(APIStatus.Success)
+                    .data(ok)
+                    .message("")
+                    .build();
+        } catch (Exception e) {
+            return APIResponse.<Boolean>builder()
+                    .status(APIStatus.Error)
+                    .data(false)
+                    .message(e.getMessage())
+                    .build();
+        }
     }
 
     @Override

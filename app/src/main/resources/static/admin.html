@@ -8,21 +8,17 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<!-- در index.html -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="/">Scholar Shop</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
+        <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item"><a class="nav-link" href="/">خانه</a></li>
                 <li class="nav-item"><a class="nav-link" href="/products.html">محصولات</a></li>
                 <li class="nav-item">
                     <a class="nav-link position-relative" href="/cart.html">
                         <i class="fas fa-shopping-cart cart-icon"></i>
-                        <span id="cart-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-count">0</span>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
                     </a>
                 </li>
                 <li class="nav-item"><a class="nav-link" href="/auth.html">ورود/ثبت‌نام</a></li>
@@ -31,78 +27,48 @@
     </div>
 </nav>
 
-
 <div class="container mt-4">
     <h1>پنل مدیریت</h1>
 
-    <!-- تب‌های مدیریت -->
     <ul class="nav nav-tabs" id="adminTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="products-tab" data-bs-toggle="tab" data-bs-target="#products" type="button">محصولات</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button">کاربران</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button">سفارش‌ها</button>
-        </li>
-
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="reports-tab" data-bs-toggle="tab"
-                    data-bs-target="#reports" type="button" role="tab"
-                    aria-controls="reports" aria-selected="false">
-                گزارشات
-            </button>
-        </li>
-
+        <li class="nav-item"><button class="nav-link active" id="products-tab" data-bs-toggle="tab" data-bs-target="#products" type="button">محصولات</button></li>
+        <li class="nav-item"><button class="nav-link" id="users-tab"    data-bs-toggle="tab" data-bs-target="#users"    type="button">کاربران</button></li>
+        <li class="nav-item"><button class="nav-link" id="orders-tab"   data-bs-toggle="tab" data-bs-target="#orders"   type="button">سفارش‌ها</button></li>
+        <li class="nav-item"><button class="nav-link" id="reports-tab"  data-bs-toggle="tab" data-bs-target="#reports"  type="button">گزارشات</button></li>
     </ul>
 
-    <!-- محتوای تب‌ها -->
     <div class="tab-content mt-3" id="adminTabsContent">
-        <!-- مدیریت محصولات -->
         <div class="tab-pane fade show active" id="products" role="tabpanel">
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                افزودن محصول جدید
-            </button>
-            <div id="products-list">
-                <!-- محصولات اینجا نمایش داده می‌شوند -->
-            </div>
+            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addProductModal">افزودن محصول جدید</button>
+            <div id="products-list"></div>
         </div>
 
-        <!-- مدیریت کاربران -->
         <div class="tab-pane fade" id="users" role="tabpanel">
-            <div id="users-list">
-                <!-- کاربران اینجا نمایش داده می‌شوند -->
-            </div>
+            <div id="users-list"><p class="text-muted">در نسخهٔ فعلی غیرفعال است.</p></div>
         </div>
 
-        <!-- مدیریت سفارش‌ها -->
         <div class="tab-pane fade" id="orders" role="tabpanel">
-            <div id="orders-list">
-                <!-- سفارش‌ها اینجا نمایش داده می‌شوند -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="m-0">سفارش‌ها</h5>
                 <button class="btn btn-secondary" id="download-report-btn">دانلود گزارش سفارش‌ها</button>
             </div>
-
-            <!-- بخش‌های قبلی -->
-            <div class="tab-pane fade" id="reports" role="tabpanel" aria-labelledby="reports-tab">
-                <h4 class="mt-3">گزارش پرفروش‌ترین محصول</h4>
-                <div id="best-selling-container" class="mb-4">
-                    <p>در حال بارگذاری...</p>
-                </div>
-                <h4 class="mt-3">گزارش فروش ماهانه</h4>
-                <div id="monthly-sales-container">
-                    <p>در حال بارگذاری...</p>
-                </div>
+            <div id="orders-list">
+                <p class="text-muted">در حال بارگذاری سفارش‌ها…</p>
             </div>
-
         </div>
 
-
-
+        <!-- گزارشات باید هم‌سطح سفارش‌ها باشد، نه داخل آن -->
+        <div class="tab-pane fade" id="reports" role="tabpanel" aria-labelledby="reports-tab">
+            <h4 class="mt-3">پرفروش‌ترین محصول</h4>
+            <div id="best-selling-container" class="mb-4"><p>در حال بارگذاری…</p></div>
+            <h4 class="mt-3">فروش ماهانه</h4>
+            <div id="monthly-sales-container"><p>در حال بارگذاری…</p></div>
+        </div>
     </div>
 </div>
 
-<!-- مودال افزودن محصول -->
+<!-- مودال افزودن -->
+<!-- در فرم: imageId و description را required کنیم -->
 <div class="modal fade" id="addProductModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -121,29 +87,28 @@
                         <input id="prodPrice" type="number" min="0" class="form-control" required>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">شناسهٔ دسته‌بندی</label>
-                        <input id="prodCategoryId" type="number" min="1" class="form-control" placeholder="مثال: 1" required>
+                        <label class="form-label">شناسه دسته‌بندی</label>
+                        <input id="prodCategoryId" type="number" min="1" class="form-control">
+                        <div class="form-text">می‌تواند خالی باشد.</div>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">شناسهٔ تصویر (اختیاری)</label>
-                        <input id="prodImageId" class="form-control" placeholder="مثال: 10">
-                        <div class="form-text">اگر خالی بماند، تصویر پیش‌فرض نمایش داده می‌شود.</div>
+                        <label class="form-label">شناسه تصویر (اجباری)</label>
+                        <input id="prodImageId" type="number" min="1" class="form-control" required>
+                        <div class="form-text">باید id واقعی از جدول <code>file</code> باشد (مثلاً 10).</div>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">توضیحات</label>
-                        <textarea id="prodDesc" rows="3" class="form-control"></textarea>
+                        <label class="form-label">توضیحات (اجباری)</label>
+                        <textarea id="prodDesc" rows="3" class="form-control" required></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary">ذخیره</button>
                 </form>
-
             </div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- بعد -->
-<script type="module" src="js/api.js"></script>
-<script type="module" src="js/admin.js"></script>
+<script type="module" src="js/api.js?v=28"></script>
+<script type="module" src="js/admin.js?v=28"></script>
 </body>
 </html>

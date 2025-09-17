@@ -1,42 +1,26 @@
-import { userAPI } from './api.js';
+// static/js/auth.js
+import { userAPI, ui } from './api.js';
 
-// مدیریت فرم ورود
 document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  // توجه: اینجا با idهای واقعی فرم در auth.html می‌خوانیم
+  const username = document.getElementById('loginUsername')?.value?.trim();
+  const password = document.getElementById('loginPassword')?.value?.trim();
+  if (!username || !password) { alert('لطفاً همهٔ فیلدها را پر کنید.'); return; }
 
-    const username = document.getElementById('loginUsername')?.value.trim();
-    const password = document.getElementById('loginPassword')?.value.trim();
-
-    if (!username || !password) {
-        alert('لطفاً همهٔ فیلدها را پر کنید.');
-        return;
-    }
-
-    try {
-        const response = await userAPI.login({ username, password });
-
-        if (!response || response.status === 'Error' || !response.data) {
-            alert(response?.message || 'نام کاربری یا رمز عبور اشتباه است.');
-            return;
-        }
-
-        const token = response.data.token || response.token;
-        localStorage.setItem('token', token);
-
-        const loggedInUsername = response.data.username || username;
-        if (loggedInUsername.toLowerCase() === 'admin') {
-            window.location.href = '/admin.html';
-        } else {
-            window.location.href = '/';
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        alert('خطا در ورود: ' + error.message);
-    }
+  try {
+    await userAPI.login(username, password); // /api/user/login و ذخیرهٔ توکن در localStorage
+    ui.toast('ورود موفق!');
+    if (username.toLowerCase() === 'admin') location.href = '/admin.html';
+    else location.href = '/';
+  } catch (err) {
+    console.error('Login error:', err);
+    alert('ورود ناموفق بود.');
+  }
 });
 
-// مدیریت فرم ثبت‌نام (غیرفعال)
+// ثبت‌نام غیرفعال
 document.getElementById('registerForm')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    alert('امکان ثبت‌نام از این طریق وجود ندارد. لطفاً با مدیر سیستم تماس بگیرید.');
+  e.preventDefault();
+  alert('امکان ثبت‌نام از این طریق وجود ندارد. لطفاً با مدیر سیستم تماس بگیرید.');
 });

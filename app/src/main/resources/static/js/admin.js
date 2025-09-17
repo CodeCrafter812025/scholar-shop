@@ -1,171 +1,200 @@
-// admin.js
-import { productAPI, adminProductAPI, orderAPI } from './api.js';
+// static/js/admin.js
+import { panelProductAPI, panelReportAPI, ui } from './api.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // بارگذاری اولیه
-  await loadProducts();
-  await loadOrdersForMe();
+document.addEventListener('DOMContentLoaded', () => {
+  loadProducts();
+  loadOrders();
+  loadReports();
 
-  // افزودن محصول
-  const form = document.getElementById('addProductForm');
-  form?.addEventListener('submit', onCreateProduct);
-
-  // دانلود گزارش سفارش‌ها
+  document.getElementById('addProductForm')?.addEventListener('submit', onCreate);
   document.getElementById('download-report-btn')?.addEventListener('click', downloadOrdersCsv);
+
+  // تلاش برای تب کاربران (اگر endpointی جواب داد، لیست می‌سازیم)
+  loadUsers();
 });
 
+/* ------------------ Products ------------------ */
 async function loadProducts() {
   const host = document.getElementById('products-list');
-  if (!host) return;
-
+  host.innerHTML = '<p class="text-muted">در حال بارگذاری…</p>';
   try {
-    const res = await productAPI.getAll(0, 200);
-    const list = res?.data?.content ?? res?.content ?? res?.data ?? res;
-    const products = Array.isArray(list) ? list : [];
-
-    if (!products.length) {
-      host.innerHTML = `<div class="alert alert-secondary">محصولی یافت نشد.</div>`;
+    const list = await panelProductAPI.list();
+    if (!Array.isArray(list) || list.length === 0) {
+      host.innerHTML = '<p class="text-muted">محصولی یافت نشد.</p>';
       return;
     }
-
-    host.innerHTML = `
-      <div class="row">
-        ${products.map(p => productCard(p)).join('')}
-      </div>
-    `;
+    host.innerHTML = list.map(p => card(p)).join('');
+    // expose delete globally
+    window.deleteProduct = async (id) => {
+      try {
+        await panelProductAPI.remove(id);
+        ui.toast('محصول حذف شد.');
+        loadProducts();
+      } catch (e) {
+        console.error('deleteProduct error:', e);
+        ui.toast('خطا در حذف محصول!');
+      }
+    };
   } catch (e) {
-    console.error('loadProducts error:', e);
-    host.innerHTML = `<div class="alert alert-danger">خطا در دریافت محصولات</div>`;
+    console.error(e);
+    host.innerHTML = '<p class="text-danger">خطا در دریافت محصولات.</p>';
   }
 }
 
-function productCard(p) {
-  const img = p?.image?.path || 'images/tshirt1.webp';
-  const price = (p?.price ?? 0).toLocaleString('fa-IR');
+function card(p) {
+  const img = p?.image?.path ? `/${p.image.path}` :
+    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="100%" height="100%" fill="%23eee"/></svg>';
+  const price = (p.price || 0).toLocaleString('fa-IR');
   return `
-    <div class="col-md-4 mb-3">
-      <div class="card h-100">
-        <img src="${img}" class="card-img-top" alt="${p?.title || ''}" onerror="this.src='images/tshirt1.webp'">
-        <div class="card-body d-flex flex-column">
-          <h6 class="card-title">${p?.title || '-'}</h6>
-          <div class="mt-auto d-flex justify-content-between align-items-center">
-            <span class="fw-bold">${price}</span>
-            <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${p.id})">حذف</button>
+    <div class="card mb-2">
+      <div class="row g-0 align-items-center">
+        <div class="col-auto"><img src="${img}" width="110" height="80" class="rounded-start" alt=""></div>
+        <div class="col">
+          <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-bold">${p.title}</div>
+                <div class="text-muted small">${price} تومان</div>
+              </div>
+              <div>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${p.id})">حذف</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-async function onCreateProduct(e) {
+async function onCreate(e) {
   e.preventDefault();
+  const title = document.getElementById('prodTitle')?.value?.trim();
+  const price = Number(document.getElementById('prodPrice')?.value || 0);
+  const categoryId = document.getElementById('prodCategoryId')?.value?.trim();
+  const imageId = document.getElementById('prodImageId')?.value?.trim();
+  const description = document.getElementById('prodDesc')?.value?.trim();
+
+  if (!title || !price || !imageId || !description) {
+    ui.toast('عنوان، قیمت، تصویر و توضیحات الزامی است.');
+    return;
+  }
+
   try {
-    const title = document.getElementById('prodTitle')?.value?.trim();
-    const description = document.getElementById('prodDesc')?.value?.trim() || '';
-    const price = Number(document.getElementById('prodPrice')?.value);
-    const categoryId = Number(document.getElementById('prodCategoryId')?.value);
-    const imageIdRaw = document.getElementById('prodImageId')?.value?.trim();
-
-    if (!title || !price || !categoryId) {
-      alert('عنوان، قیمت و شناسه دسته‌بندی الزامی است.');
-      return;
-    }
-
-    const payload = { title, description, price, enable: true, exist: true, category: { id: categoryId } };
-    const imageId = Number(imageIdRaw);
-    if (!Number.isNaN(imageId) && imageId > 0) payload.image = { id: imageId };
-
-    await adminProductAPI.create(payload);
-
-    // بستن مودال اگر bootstrap وجود دارد
+    await panelProductAPI.create({ title, price, categoryId, imageId, description });
+    ui.toast('محصول ثبت شد.');
     const modalEl = document.getElementById('addProductModal');
-    if (modalEl && window.bootstrap) window.bootstrap.Modal.getInstance(modalEl)?.hide();
+    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
     e.target.reset();
-
-    alert('محصول با موفقیت ثبت شد.');
-    await loadProducts();
+    loadProducts();
   } catch (err) {
-    console.error('createProduct error:', err);
-    alert('خطا در ایجاد محصول: ' + (err.message || ''));
+    console.error('createProduct error', err);
+    ui.toast('خطا در ثبت محصول! (imageId/description را بررسی کنید)');
   }
 }
 
-window.deleteProduct = async function(id) {
-  if (!confirm('محصول حذف شود؟')) return;
-  try {
-    await adminProductAPI.delete(id);
-    alert('محصول حذف شد.');
-    await loadProducts();
-  } catch (err) {
-    console.error('deleteProduct error:', err);
-    alert('خطا در حذف محصول: ' + (err.message || ''));
-  }
-};
 
-// سفارش‌های کاربر فعلی (به‌صورت نمونه)
-async function loadOrdersForMe() {
+/* ------------------ Orders (Admin view – از /api/invoice) ------------------ */
+async function loadOrders() {
   const host = document.getElementById('orders-list');
   if (!host) return;
-
+  host.innerHTML = '<p class="text-muted">در حال بارگذاری سفارش‌ها…</p>';
   try {
-    const res = await orderAPI.getUserOrders();
-    const orders = res?.data || [];
-
-    if (!orders.length) {
-      host.innerHTML = `<div class="alert alert-secondary">سفارشی یافت نشد.</div>
-        <button class="btn btn-secondary mt-2" id="download-report-btn">دانلود گزارش سفارش‌ها</button>`;
+    const invoices = await panelReportAPI.listInvoicesAll(); // از /api/invoice
+    if (!Array.isArray(invoices) || invoices.length === 0) {
+      host.innerHTML = '<p class="text-muted">سفارشی یافت نشد.</p>';
       return;
     }
-
-    host.innerHTML = `
-      <div class="list-group mb-3">
-        ${orders.map(o => orderItem(o)).join('')}
-      </div>
-      <button class="btn btn-secondary" id="download-report-btn">دانلود گزارش سفارش‌ها</button>
-    `;
-
-    document.getElementById('download-report-btn')?.addEventListener('click', downloadOrdersCsv);
+    host.innerHTML = invoices.map(invCard).join('');
   } catch (e) {
-    console.error('loadOrdersForMe error:', e);
-    host.innerHTML = `<div class="alert alert-danger">خطا در دریافت سفارش‌ها</div>`;
+    console.error(e);
+    host.innerHTML = '<p class="text-danger">خطا در دریافت سفارش‌ها.</p>';
   }
 }
 
-function orderItem(o) {
-  const when = new Date(o.createDate).toLocaleString('fa-IR');
-  const sum = (o.totalAmount || 0).toLocaleString('fa-IR');
+function invCard(o) {
+  const d = (o.createDate ? new Date(o.createDate) : new Date());
+  const total = (o.totalAmount||0).toLocaleString('fa-IR');
+  const items = Array.isArray(o.items) ? o.items : [];
   return `
-    <a class="list-group-item list-group-item-action">
-      <div class="d-flex w-100 justify-content-between">
-        <h6 class="mb-1">سفارش #${o.id}</h6>
-        <small>${when}</small>
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between">
+        <span>سفارش #${o.id}</span>
+        <span class="badge bg-${o.status==='InProgress' ? 'warning' : 'success'}">${o.status||''}</span>
       </div>
-      <p class="mb-1">وضعیت: ${o.status}</p>
-      <small>جمع کل: ${sum} تومان</small>
-    </a>
-  `;
+      <div class="card-body">
+        <div class="mb-2">تاریخ: ${d.toLocaleDateString('fa-IR')}</div>
+        <ul class="mb-2">
+          ${items.map(i => `<li>${i.product?.title || ''} × ${i.quantity} — ${ (i.price||0).toLocaleString('fa-IR') } تومان</li>`).join('')}
+        </ul>
+        <div class="fw-bold">جمع کل: ${total} تومان</div>
+      </div>
+    </div>`;
 }
 
-// دانلود CSV سفارش‌ها
+/* ------------------ Reports (Best sellers & monthly) ------------------ */
+async function loadReports() {
+  const bestHost = document.getElementById('best-selling-container');
+  const monthHost = document.getElementById('monthly-sales-container');
+  if (bestHost) bestHost.textContent = 'در حال بارگذاری...';
+  if (monthHost) monthHost.textContent = 'در حال بارگذاری...';
+
+  try {
+    const invoices = await panelReportAPI.listInvoicesAll();
+    // Best sellers
+    const map = new Map();
+    invoices.forEach(inv => (inv.items||[]).forEach(it => {
+      const name = it.product?.title || `#${it.product?.id||''}`;
+      map.set(name, (map.get(name)||0) + (it.quantity||0));
+    }));
+    const top = [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if (bestHost) {
+      bestHost.innerHTML = top.length
+        ? `<ol class="mb-0">${top.map(([n,c])=>`<li class="mb-1">${c} تعداد — ${n}</li>`).join('')}</ol>`
+        : '<p class="text-muted mb-0">داده‌ای نیست.</p>';
+    }
+
+    // Monthly
+    const monthMap = new Map();
+    invoices.forEach(inv => {
+      const d = inv.createDate ? new Date(inv.createDate) : null;
+      if (!d) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      monthMap.set(key, (monthMap.get(key)||0) + (inv.totalAmount||0));
+    });
+    const months = [...monthMap.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+    if (monthHost) {
+      monthHost.innerHTML = months.length
+        ? months.map(([m,sum])=>`<div>${m.replace('-',' / ')} — ${sum.toLocaleString('fa-IR')} تومان</div>`).join('')
+        : '<p class="text-muted mb-0">داده‌ای نیست.</p>';
+    }
+  } catch (e) {
+    console.error('reports', e);
+    if (bestHost) bestHost.innerHTML = '<p class="text-danger">API گزارش سمت سرور در دسترس نیست.</p>';
+    if (monthHost) monthHost.innerHTML = '<p class="text-danger">API گزارش سمت سرور در دسترس نیست.</p>';
+  }
+}
+
+/* ------------------ Download CSV ------------------ */
 async function downloadOrdersCsv() {
   try {
-    const res = await orderAPI.getUserOrders();
-    const orders = res?.data || [];
-    const rows = [
-      ['id', 'createDate', 'status', 'totalAmount'],
-      ...orders.map(o => [o.id, o.createDate, o.status, o.totalAmount]),
-    ].map(r => r.join(',')).join('\n');
-
-    const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' });
+    const invoices = await panelReportAPI.listInvoicesAll();
+    if (!invoices.length) { ui.toast('سفارشی برای گزارش وجود ندارد.'); return; }
+    const rows = [['id','createDate','status','totalAmount','itemsCount']];
+    invoices.forEach(o => rows.push([
+      o.id,
+      o.createDate || '',
+      o.status || '',
+      o.totalAmount || 0,
+      Array.isArray(o.items) ? o.items.length : 0
+    ]));
+    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'orders.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    a.download = `orders-report-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
   } catch (e) {
-    alert('خطا در ساخت گزارش');
     console.error(e);
+    ui.toast('خطا در تولید گزارش');
   }
 }

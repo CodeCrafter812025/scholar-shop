@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
+
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -69,10 +71,28 @@ public class ProductService implements CRUDService<ProductDto>, HasValidation<Pr
         return mapper.map(repository.save(data), ProductDto.class);
     }
 
-    @Override
-    public Boolean delete(Long id) {
-        repository.deleteById(id);
+
+
+    public Boolean softDelete(Long id) throws NotFoundException {
+        Product p = repository.findById(id).orElseThrow(NotFoundException::new);
+        p.setEnable(false);
+        p.setExist(false);
+        repository.save(p);
         return true;
+    }
+
+    public Boolean delete(Long id) {
+        try {
+            repository.deleteById(id);
+            return true;
+        } catch (DataIntegrityViolationException ex) {
+            // در صورت FK constraint (مثلاً invoice_item)، حذف نرم کن
+            try {
+                return softDelete(id);
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
     }
 
     @Override
